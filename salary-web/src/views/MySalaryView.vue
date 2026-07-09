@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, computed } from 'vue'
 import { Search } from '@element-plus/icons-vue'
 import { useAuthStore } from '@/stores/auth'
 import request from '@/utils/request'
@@ -7,6 +7,14 @@ import request from '@/utils/request'
 const authStore = useAuthStore()
 const loading = ref(false)
 const tableData = ref<any[]>([])
+const page = ref(1)
+const pageSize = ref(15)
+const total = ref(0)
+const pagedData = computed(() => {
+  total.value = tableData.value.length
+  const start = (page.value - 1) * pageSize.value
+  return tableData.value.slice(start, start + pageSize.value)
+})
 const year = ref(new Date().getFullYear())
 const month = ref<number | null>(null)
 
@@ -39,7 +47,8 @@ onMounted(loadData)
     </div>
 
     <el-card shadow="hover">
-      <el-table :data="tableData" v-loading="loading" border stripe :empty-text="authStore.employeeId ? '暂无工资数据' : '当前账号未关联员工信息'">
+      <div style="flex: 1; overflow: auto;">
+        <el-table :data="pagedData" v-loading="loading" border stripe :empty-text="authStore.employeeId ? '暂无工资数据' : '当前账号未关联员工信息'">
         <el-table-column prop="salaryYear" label="年份" width="80" />
         <el-table-column prop="salaryMonth" label="月份" width="60" />
         <el-table-column prop="baseSalary" label="基本工资" width="100" align="right" />
@@ -75,11 +84,17 @@ onMounted(loadData)
           </template>
         </el-table-column>
       </el-table>
+      </div>
+      <div style="display: flex; justify-content: center; padding: 14px 0 4px; flex-shrink: 0;">
+        <el-pagination :current-page="page" :page-size="pageSize" :total="total" :page-sizes="[10, 15, 20, 50]" layout="total, sizes, prev, pager, next, jumper" @current-change="page = $event" @size-change="pageSize = $event; page = 1" />
+      </div>
     </el-card>
   </div>
 </template>
 
 <style scoped>
-.page-container { max-width: 100%; }
-.toolbar { margin-bottom: 16px; display: flex; align-items: center; }
+.page-container { height: calc(100vh - 100px); display: flex; flex-direction: column; }
+.page-container :deep(.el-card) { flex: 1; display: flex; flex-direction: column; }
+.page-container :deep(.el-card__body) { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+.toolbar { margin-bottom: 16px; display: flex; align-items: center; flex-shrink: 0; }
 </style>

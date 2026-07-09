@@ -1,34 +1,43 @@
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import type { FormInstance } from 'element-plus'
 import { Plus, Search, Delete, Edit, Refresh, View } from '@element-plus/icons-vue'
 import request from '@/utils/request'
 
 interface Employee {
-  employeeId?: number
-  empNo: string
-  employeeName: string
+  employee_id?: number
+  emp_no: string
+  employee_name: string
   gender: number
-  deptName: string
-  deptId: number
-  positionName: string
-  positionId: number
-  titleName: string
-  titleId: number
-  entryDate: string
-  baseSalary: number
+  dept_name: string
+  dept_id: number
+  position_name: string
+  position_id: number
+  title_name: string
+  title_id: number
+  title_salary: number
+  entry_date: string
+  base_salary: number
   phone: string
   email: string
   status: number
-  serviceYears: number
+  service_years: number
 }
 
 const loading = ref(false)
 const tableData = ref<Employee[]>([])
+const sortedData = computed(() => {
+  return [...tableData.value].sort((a, b) => {
+    const titleDiff = (b.title_salary || 0) - (a.title_salary || 0)
+    if (titleDiff !== 0) return titleDiff
+    return (b.base_salary || 0) - (a.base_salary || 0)
+  })
+})
 const searchKeyword = ref('')
 const page = ref(1)
-const pageSize = ref(10)
+const pageSize = ref(12)
+const total = ref(0)
 
 const dialogVisible = ref(false)
 const dialogTitle = ref('新增员工')
@@ -45,7 +54,10 @@ const form = reactive({
 })
 
 const rules = {
-  empNo: [{ required: true, message: '请输入员工编号', trigger: 'blur' }],
+  empNo: [
+    { required: true, message: '请输入员工编号', trigger: 'blur' },
+    { pattern: /^FS\d{7}$/, message: '工号格式必须为FS+7位数字，如FS2025001', trigger: 'blur' }
+  ],
   name: [{ required: true, message: '请输入姓名', trigger: 'blur' }],
   gender: [{ required: true, message: '请选择性别', trigger: 'change' }],
   departmentId: [{ required: true, message: '请选择部门', trigger: 'change' }],
@@ -60,15 +72,29 @@ async function loadData() {
         params: { keyword: searchKeyword.value }
       })
       tableData.value = res.data.data || []
+      total.value = tableData.value.length
     } else {
       const res = await request.get('/api/employee/list', {
         params: { page: page.value, pageSize: pageSize.value }
       })
-      tableData.value = res.data.data || []
+      const data = res.data.data
+      tableData.value = data.records || []
+      total.value = data.total || 0
     }
   } finally {
     loading.value = false
   }
+}
+
+function handlePageChange(p: number) {
+  page.value = p
+  loadData()
+}
+
+function handleSizeChange(s: number) {
+  pageSize.value = s
+  page.value = 1
+  loadData()
 }
 
 async function loadOptions() {
@@ -86,15 +112,15 @@ function handleAdd() {
   dialogTitle.value = '新增员工'
   editingId.value = null
   Object.assign(form, { empNo: '', name: '', gender: 1, departmentId: null, positionId: null, titleId: null, entryDate: '', baseSalary: 0, phone: '', email: '', status: 1 })
+  loadOptions()
   dialogVisible.value = true
 }
 
 async function handleEdit(row: Employee) {
   dialogTitle.value = '编辑员工'
-  editingId.value = row.employeeId
+  editingId.value = row.employee_id
   try {
-    // 获取原始数据（非视图）
-    const res = await request.get(`/api/employee/${row.employeeId}`)
+    const res = await request.get(`/api/employee/${row.employee_id}`)
     const d = res.data.data
     Object.assign(form, {
       empNo: d.empNo, name: d.name, gender: d.gender,
@@ -108,8 +134,8 @@ async function handleEdit(row: Employee) {
 
 async function handleDelete(row: Employee) {
   try {
-    await ElMessageBox.confirm(`确定要删除员工 "${row.employeeName}" 吗？`, '删除确认', { type: 'warning' })
-    await request.delete(`/api/employee/${row.employeeId}`)
+    await ElMessageBox.confirm(`确定要删除员工 "${row.employee_name}" 吗？`, '删除确认', { type: 'warning' })
+    await request.delete(`/api/employee/${row.employee_id}`)
     ElMessage.success('删除成功')
     loadData()
   } catch { /* cancelled */ }
@@ -146,34 +172,62 @@ onMounted(() => { loadData(); loadOptions() })
       <el-button :icon="Refresh" @click="loadData">刷新</el-button>
     </div>
 
-    <el-card shadow="hover">
-      <el-table :data="tableData" v-loading="loading" border stripe style="width: 100%">
-        <el-table-column prop="empNo" label="工号" width="110" />
-        <el-table-column prop="employeeName" label="姓名" width="90" />
-        <el-table-column label="性别" width="60" align="center">
-          <template #default="{ row }">{{ row.gender === 1 ? '男' : '女' }}</template>
-        </el-table-column>
-        <el-table-column prop="deptName" label="部门" width="120" />
-        <el-table-column prop="positionName" label="岗位" width="120" />
-        <el-table-column prop="titleName" label="职称" width="100" />
-        <el-table-column prop="entryDate" label="入职日期" width="110" />
-        <el-table-column prop="baseSalary" label="基本工资" width="100" align="right" />
-        <el-table-column prop="serviceYears" label="工龄(年)" width="80" align="center" />
-        <el-table-column prop="phone" label="电话" width="120" />
-        <el-table-column label="状态" width="70" align="center">
+    <el-card shadow="never" style="border: none; padding-top: 8px;">
+      <div style="flex: 1; overflow: auto;">
+        <el-table :data="sortedData" v-loading="loading" border stripe style="width: 100%">
+        <el-table-column label="工号" width="100" align="center">
           <template #default="{ row }">
-            <el-tag :type="row.status === 1 ? 'success' : 'danger'" size="small">
-              {{ row.status === 1 ? '在职' : '离职' }}
-            </el-tag>
+            <span class="empno-cell">{{ row.emp_no }}</span>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="150" align="center" fixed="right">
+        <el-table-column label="姓名" width="70" align="center">
           <template #default="{ row }">
-            <el-button type="primary" link size="small" :icon="Edit" @click="handleEdit(row)">编辑</el-button>
-            <el-button type="danger" link size="small" :icon="Delete" @click="handleDelete(row)">删除</el-button>
+            <span class="name-cell">{{ row.employee_name }}</span>
+          </template>
+        </el-table-column>
+        <el-table-column label="性别" width="55" align="center">
+          <template #default="{ row }">{{ row.gender === 1 ? '男' : '女' }}</template>
+        </el-table-column>
+        <el-table-column prop="dept_name" label="部门" width="120" align="center" show-overflow-tooltip />
+        <el-table-column prop="position_name" label="岗位" width="136" align="center" show-overflow-tooltip />
+        <el-table-column prop="title_name" label="职称" width="100" align="center" show-overflow-tooltip />
+        <el-table-column prop="entry_date" label="入职日期" width="105" align="center" />
+        <el-table-column label="基本工资" width="95" align="center">
+          <template #default="{ row }">
+            <span class="salary-cell">¥{{ row.base_salary }}</span>
+          </template>
+        </el-table-column>
+        <el-table-column label="工龄" width="65" align="center">
+          <template #default="{ row }">
+            <span class="year-cell">{{ row.service_years }}年</span>
+          </template>
+        </el-table-column>
+        <el-table-column prop="phone" label="电话" width="120" align="center" />
+        <el-table-column prop="email" label="邮箱" min-width="144" align="center" show-overflow-tooltip />
+        <el-table-column label="状态" width="65" align="center">
+          <template #default="{ row }">
+            <span :class="row.status === 1 ? 'status-active' : 'status-inactive'">{{ row.status === 1 ? '在职' : '离职' }}</span>
+          </template>
+        </el-table-column>
+        <el-table-column label="操作" width="120" align="center" fixed="right">
+          <template #default="{ row }">
+            <el-button link class="emp-action-btn edit-btn" @click="handleEdit(row)">编辑</el-button>
+            <el-button link class="emp-action-btn del-btn" @click="handleDelete(row)">删除</el-button>
           </template>
         </el-table-column>
       </el-table>
+      </div>
+      <div style="display: flex; justify-content: center; padding: 16px 0 4px; flex-shrink: 0;" v-if="!searchKeyword">
+        <el-pagination
+          :current-page="page"
+          :page-size="pageSize"
+          :total="total"
+          :page-sizes="[10, 12, 20, 50]"
+          layout="total, sizes, prev, pager, next, jumper"
+          @current-change="handlePageChange"
+          @size-change="handleSizeChange"
+        />
+      </div>
     </el-card>
 
     <!-- 新增/编辑弹窗 -->
@@ -264,6 +318,64 @@ onMounted(() => { loadData(); loadOptions() })
 </template>
 
 <style scoped>
-.page-container { max-width: 1400px; }
-.toolbar { margin-bottom: 16px; display: flex; align-items: center; }
+.page-container {
+  height: calc(100vh - 100px);
+  display: flex;
+  flex-direction: column;
+}
+
+.page-container :deep(.el-card) {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.page-container :deep(.el-card__body) {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.toolbar { margin-bottom: 16px; display: flex; align-items: center; flex-shrink: 0; }
+
+.status-active {
+  color: #67c23a;
+  font-weight: 600;
+}
+
+.status-inactive {
+  color: #f56c6c;
+  font-weight: 600;
+}
+
+.emp-action-btn { }
+
+.edit-btn {
+  color: #409eff !important;
+}
+
+.del-btn {
+  color: #f56c6c !important;
+}
+
+.empno-cell {
+  font-weight: 700;
+  color: #303133;
+}
+
+.name-cell {
+  color: #1e4f8a;
+  font-weight: 600;
+}
+
+.salary-cell {
+  color: #e6a23c;
+  font-weight: 600;
+}
+
+.year-cell {
+  color: #409eff;
+  font-weight: 500;
+}
 </style>

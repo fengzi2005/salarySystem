@@ -40,6 +40,14 @@ public class EmployeeServiceImpl extends ServiceImpl<EmployeeMapper, Employee> i
         return jdbcTemplate.queryForList(sql, pageSize, offset);
     }
 
+    /**
+     * 获取员工总数
+     */
+    public long getEmployeeCount() {
+        Long count = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM v_employee_info", Long.class);
+        return count != null ? count : 0;
+    }
+
     @Override
     public List<Map<String, Object>> searchEmployees(String keyword, Long deptId, Long positionId) {
         StringBuilder sql = new StringBuilder("SELECT * FROM v_employee_info WHERE 1=1 ");

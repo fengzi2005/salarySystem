@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, computed } from 'vue'
 import { Search } from '@element-plus/icons-vue'
 import request from '@/utils/request'
 
@@ -139,6 +139,8 @@ onMounted(async () => {
 </template>
 
 <style scoped>
-.page-container { max-width: 1400px; }
-.toolbar { margin-bottom: 16px; display: flex; align-items: center; }
+.page-container { height: calc(100vh - 100px); display: flex; flex-direction: column; }
+.page-container :deep(.el-tabs) { flex: 1; display: flex; flex-direction: column; }
+.page-container :deep(.el-tabs__content) { flex: 1; overflow: auto; }
+.toolbar { margin-bottom: 16px; display: flex; align-items: center; flex-shrink: 0; }
 </style>

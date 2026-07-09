@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, computed } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Search, Refresh, Money, Check } from '@element-plus/icons-vue'
 import { useAuthStore } from '@/stores/auth'
@@ -8,6 +8,14 @@ import request from '@/utils/request'
 const authStore = useAuthStore()
 const loading = ref(false)
 const tableData = ref<any[]>([])
+const page = ref(1)
+const pageSize = ref(15)
+const total = ref(0)
+const pagedData = computed(() => {
+  total.value = tableData.value.length
+  const start = (page.value - 1) * pageSize.value
+  return tableData.value.slice(start, start + pageSize.value)
+})
 const searchForm = reactive({ year: new Date().getFullYear(), month: new Date().getMonth(), deptId: null as number | null, employeeName: '', empNo: '' })
 const deptOptions = ref<any[]>([])
 const editingRow = ref<any>(null)
@@ -93,7 +101,8 @@ onMounted(async () => {
 
     <!-- 工资表格 -->
     <el-card shadow="hover">
-      <el-table :data="tableData" v-loading="loading" border stripe style="width: 100%" :max-height="600">
+      <div style="flex: 1; overflow: auto;">
+        <el-table :data="pagedData" v-loading="loading" border stripe style="width: 100%">
         <el-table-column prop="empNo" label="工号" width="100" fixed />
         <el-table-column prop="employeeName" label="姓名" width="80" fixed />
         <el-table-column prop="deptName" label="部门" width="110" />
@@ -139,6 +148,10 @@ onMounted(async () => {
           </template>
         </el-table-column>
       </el-table>
+      </div>
+      <div style="display: flex; justify-content: center; padding: 14px 0 4px; flex-shrink: 0;">
+        <el-pagination :current-page="page" :page-size="pageSize" :total="total" :page-sizes="[10, 15, 20, 50]" layout="total, sizes, prev, pager, next, jumper" @current-change="page = $event" @size-change="pageSize = $event; page = 1" />
+      </div>
     </el-card>
 
     <!-- 手动项编辑弹窗 -->
@@ -166,6 +179,8 @@ onMounted(async () => {
 </template>
 
 <style scoped>
-.page-container { max-width: 100%; }
-.toolbar { margin-bottom: 16px; display: flex; align-items: center; flex-wrap: wrap; gap: 6px; }
+.page-container { height: calc(100vh - 100px); display: flex; flex-direction: column; }
+.page-container :deep(.el-card) { flex: 1; display: flex; flex-direction: column; }
+.page-container :deep(.el-card__body) { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+.toolbar { margin-bottom: 16px; display: flex; align-items: center; flex-wrap: wrap; gap: 6px; flex-shrink: 0; }
 </style>

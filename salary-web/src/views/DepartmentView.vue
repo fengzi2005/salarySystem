@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import type { FormInstance } from 'element-plus'
 import { Plus, Search, Delete, Edit, Refresh } from '@element-plus/icons-vue'
@@ -18,6 +18,19 @@ interface Department {
 
 const loading = ref(false)
 const treeData = ref<Department[]>([])
+const deptPage = ref(1)
+const deptPageSize = ref(20)
+const deptTotal = computed(() => {
+  // 递归统计所有节点数量
+  function count(nodes: Department[]): number {
+    let c = nodes.length
+    for (const n of nodes) {
+      if (n.children && n.children.length > 0) c += count(n.children)
+    }
+    return c
+  }
+  return count(treeData.value)
+})
 const searchLevel = ref<number | null>(null)
 const dialogVisible = ref(false)
 const dialogTitle = ref('新增部门')
@@ -37,14 +50,42 @@ const rules = {
   deptLevel: [{ required: true, message: '请选择层级', trigger: 'change' }]
 }
 
+const allTreeData = ref<Department[]>([])
+
 async function loadTree() {
   loading.value = true
   try {
     const res = await request.get('/api/department/tree')
-    treeData.value = res.data.data || []
+    allTreeData.value = res.data.data || []
+    applyFilter()
   } finally {
     loading.value = false
   }
+}
+
+function applyFilter() {
+  if (!searchLevel.value) {
+    treeData.value = allTreeData.value
+    return
+  }
+  treeData.value = filterTreeByLevel(allTreeData.value, searchLevel.value)
+}
+
+function filterTreeByLevel(nodes: Department[], targetLevel: number): Department[] {
+  const result: Department[] = []
+  for (const node of nodes) {
+    if (node.deptLevel === targetLevel) {
+      // 匹配层级：只保留节点本身，去掉子节点
+      result.push({ ...node, children: [] })
+    } else if (node.children && node.children.length > 0) {
+      // 未匹配：递归查找子节点
+      const filteredChildren = filterTreeByLevel(node.children, targetLevel)
+      if (filteredChildren.length > 0) {
+        result.push({ ...node, children: filteredChildren })
+      }
+    }
+  }
+  return result
 }
 
 function handleAdd(parentId = 0, level = 1) {
@@ -59,9 +100,9 @@ function handleAdd(parentId = 0, level = 1) {
   dialogVisible.value = true
 }
 
-/** 获取同一父部门下的下一个可用序号 */
+/** 获取同一父部门下的下一个可用序号（基于全量数据） */
 function getNextSortOrder(parentId: number): number {
-  const allDepts = flattenTree(treeData.value)
+  const allDepts = flattenTree(allTreeData.value)
   const siblings = allDepts.filter(d => d.parentId === parentId)
   if (siblings.length === 0) return 1
   const maxOrder = Math.max(...siblings.map(d => d.sortOrder || 0))
@@ -105,8 +146,8 @@ async function handleSubmit() {
   const valid = await formRef.value?.validate().catch(() => false)
   if (!valid) return
 
-  // 校验同一父部门下序号是否重复
-  const allDepts = flattenTree(treeData.value)
+  // 校验同一父部门下序号是否重复（基于全量数据）
+  const allDepts = flattenTree(allTreeData.value)
   const duplicate = allDepts.find(d =>
     d.parentId === form.parentId &&
     d.sortOrder === form.sortOrder &&
@@ -149,7 +190,7 @@ onMounted(loadTree)
     <!-- 顶部操作栏 -->
     <div class="toolbar">
       <el-button type="primary" :icon="Plus" @click="handleAdd(0, 1)">新增部门</el-button>
-      <el-select v-model="searchLevel" placeholder="按层级筛选" clearable style="width: 140px; margin-left: 10px" @change="loadTree">
+      <el-select v-model="searchLevel" placeholder="按层级筛选" clearable style="width: 140px; margin-left: 10px" @change="applyFilter">
         <el-option label="总部" :value="1" />
         <el-option label="一级部门" :value="2" />
         <el-option label="分部" :value="3" />
@@ -159,7 +200,8 @@ onMounted(loadTree)
 
     <!-- 部门树形表格 -->
     <el-card shadow="hover">
-      <el-table
+      <div style="flex: 1; overflow: auto;">
+        <el-table
         :data="treeData"
         v-loading="loading"
         row-key="id"
@@ -189,6 +231,10 @@ onMounted(loadTree)
           </template>
         </el-table-column>
       </el-table>
+      </div>
+      <div style="display: flex; justify-content: center; padding: 14px 0 4px; flex-shrink: 0;">
+        <el-pagination :current-page="deptPage" :page-size="deptPageSize" :total="deptTotal" :page-sizes="[10, 20, 50]" layout="total, prev, pager, next" @current-change="deptPage = $event" />
+      </div>
     </el-card>
 
     <!-- 新增/编辑弹窗 -->
@@ -220,8 +266,10 @@ onMounted(loadTree)
 </template>
 
 <style scoped>
-.page-container { font-size: 15px; }
-.toolbar { margin-bottom: 16px; display: flex; align-items: center; }
+.page-container { font-size: 15px; height: calc(100vh - 100px); display: flex; flex-direction: column; }
+.page-container :deep(.el-card) { flex: 1; display: flex; flex-direction: column; }
+.page-container :deep(.el-card__body) { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+.toolbar { margin-bottom: 16px; display: flex; align-items: center; flex-shrink: 0; }
 
 .level-text {
   font-size: 15px;

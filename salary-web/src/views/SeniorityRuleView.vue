@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import type { FormInstance } from 'element-plus'
 import { Plus, Delete, Edit, Refresh, CircleCheck } from '@element-plus/icons-vue'
@@ -13,6 +13,14 @@ interface SeniorityRule {
 
 const loading = ref(false)
 const tableData = ref<SeniorityRule[]>([])
+const page = ref(1)
+const pageSize = ref(15)
+const total = ref(0)
+const pagedData = computed(() => {
+  total.value = tableData.value.length
+  const start = (page.value - 1) * pageSize.value
+  return tableData.value.slice(start, start + pageSize.value)
+})
 const dialogVisible = ref(false)
 const dialogTitle = ref('新增规则')
 const formRef = ref<FormInstance>()
@@ -87,7 +95,8 @@ onMounted(loadData)
     </div>
 
     <el-card shadow="hover">
-      <el-table :data="tableData" v-loading="loading" border stripe>
+      <div style="flex: 1; overflow: auto;">
+        <el-table :data="pagedData" v-loading="loading" border stripe>
         <el-table-column prop="ruleName" label="规则名称" width="180" />
         <el-table-column label="规则类型" width="100" align="center">
           <template #default="{ row }">
@@ -126,6 +135,10 @@ onMounted(loadData)
           </template>
         </el-table-column>
       </el-table>
+      </div>
+      <div style="display: flex; justify-content: center; padding: 14px 0 4px; flex-shrink: 0;">
+        <el-pagination :current-page="page" :page-size="pageSize" :total="total" :page-sizes="[10, 15, 20, 50]" layout="total, sizes, prev, pager, next, jumper" @current-change="page = $event" @size-change="pageSize = $event; page = 1" />
+      </div>
     </el-card>
 
     <el-dialog v-model="dialogVisible" :title="dialogTitle" width="500px" destroy-on-close>
@@ -173,6 +186,8 @@ onMounted(loadData)
 </template>
 
 <style scoped>
-.page-container { max-width: 1200px; }
-.toolbar { margin-bottom: 16px; display: flex; align-items: center; }
+.page-container { height: calc(100vh - 100px); display: flex; flex-direction: column; }
+.page-container :deep(.el-card) { flex: 1; display: flex; flex-direction: column; }
+.page-container :deep(.el-card__body) { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+.toolbar { margin-bottom: 16px; display: flex; align-items: center; flex-shrink: 0; }
 </style>

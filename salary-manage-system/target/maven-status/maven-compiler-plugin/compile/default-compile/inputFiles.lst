@@ -1,6 +1,7 @@
 d:\salarySystem\salary-manage-system\src\main\java\com\heima\salarymanagesystem\common\JwtUtils.java
 d:\salarySystem\salary-manage-system\src\main\java\com\heima\salarymanagesystem\common\Result.java
 d:\salarySystem\salary-manage-system\src\main\java\com\heima\salarymanagesystem\common\UserHolder.java
+d:\salarySystem\salary-manage-system\src\main\java\com\heima\salarymanagesystem\config\MetaObjectHandlerConfig.java
 d:\salarySystem\salary-manage-system\src\main\java\com\heima\salarymanagesystem\config\MyBatisPlusConfig.java
 d:\salarySystem\salary-manage-system\src\main\java\com\heima\salarymanagesystem\config\RedisConfig.java
 d:\salarySystem\salary-manage-system\src\main\java\com\heima\salarymanagesystem\config\WebConfig.java

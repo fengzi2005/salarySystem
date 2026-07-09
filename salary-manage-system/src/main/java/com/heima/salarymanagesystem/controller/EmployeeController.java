@@ -3,9 +3,11 @@ package com.heima.salarymanagesystem.controller;
 import com.heima.salarymanagesystem.common.Result;
 import com.heima.salarymanagesystem.entity.Employee;
 import com.heima.salarymanagesystem.service.EmployeeService;
+import com.heima.salarymanagesystem.service.impl.EmployeeServiceImpl;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -25,10 +27,13 @@ public class EmployeeController {
      * GET /api/employee/list?page=1&pageSize=10
      */
     @GetMapping("/list")
-    public Result<List<Map<String, Object>>> getEmployeeList(
+    public Result<Map<String, Object>> getEmployeeList(
             @RequestParam(defaultValue = "1") Integer page,
             @RequestParam(defaultValue = "10") Integer pageSize) {
-        return Result.ok(employeeService.getEmployeeList(page, pageSize));
+        Map<String, Object> result = new HashMap<>();
+        result.put("records", employeeService.getEmployeeList(page, pageSize));
+        result.put("total", ((EmployeeServiceImpl) employeeService).getEmployeeCount());
+        return Result.ok(result);
     }
 
     /**
