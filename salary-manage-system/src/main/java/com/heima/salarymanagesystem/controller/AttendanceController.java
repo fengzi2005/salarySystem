@@ -21,14 +21,19 @@ public class AttendanceController {
     private final AttendanceService attendanceService;
 
     /**
-     * 查询某月所有员工考勤记录
-     * GET /api/attendance/month?year=2025&month=6
+     * 查询月考勤记录，支持范围查询
+     * GET /api/attendance/month?startYear=2025&startMonth=1&endYear=2025&endMonth=12
      */
     @GetMapping("/month")
     public Result<List<Map<String, Object>>> getMonthlyAttendance(
-            @RequestParam Integer year,
-            @RequestParam Integer month) {
-        return Result.ok(attendanceService.getMonthlyAttendance(year, month));
+            @RequestParam(defaultValue = "2025") Integer startYear,
+            @RequestParam(defaultValue = "1") Integer startMonth,
+            @RequestParam(required = false) Integer endYear,
+            @RequestParam(required = false) Integer endMonth) {
+        if (endYear == null || endMonth == null) {
+            return Result.ok(attendanceService.getMonthlyAttendance(startYear, startMonth));
+        }
+        return Result.ok(attendanceService.getMonthlyAttendanceRange(startYear, startMonth, endYear, endMonth));
     }
 
     /**

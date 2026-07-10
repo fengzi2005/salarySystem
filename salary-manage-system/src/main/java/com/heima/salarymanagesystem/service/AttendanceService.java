@@ -17,6 +17,12 @@ public interface AttendanceService extends IService<Attendance> {
     List<Map<String, Object>> getMonthlyAttendance(Integer year, Integer month);
 
     /**
+     * 查询时间范围内考勤记录
+     */
+    List<Map<String, Object>> getMonthlyAttendanceRange(Integer startYear, Integer startMonth,
+                                                          Integer endYear, Integer endMonth);
+
+    /**
      * 批量导入考勤数据
      */
     void batchImport(List<Attendance> attendanceList);

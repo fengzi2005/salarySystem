@@ -146,14 +146,15 @@ BEGIN
     DECLARE v_effective_date DATE;
     DECLARE v_done INT DEFAULT 0;
 
-    -- 游标：遍历所有在职员工
+    -- 游标：遍历所有在职员工（入职日期在计算月份之前或当月入职）
     DECLARE cur_employee CURSOR FOR
         SELECT e.id, e.base_salary, IFNULL(p.position_salary, 0),
                IFNULL(t.title_salary, 0), e.entry_date
         FROM employee e
         LEFT JOIN position p ON e.position_id = p.id
         LEFT JOIN title t ON e.title_id = t.id
-        WHERE e.status = 1;
+        WHERE e.status = 1
+          AND e.entry_date <= LAST_DAY(CONCAT(p_year, '-', LPAD(p_month, 2, '0'), '-01'));
 
     DECLARE CONTINUE HANDLER FOR NOT FOUND SET v_done = 1;
 

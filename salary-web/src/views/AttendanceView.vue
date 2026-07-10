@@ -6,11 +6,11 @@ import { Plus, Delete, Edit, Refresh, Search } from '@element-plus/icons-vue'
 import request from '@/utils/request'
 
 interface Attendance {
-  id?: number; employeeId: number; attendanceYear: number; attendanceMonth: number
-  leaveDays: number; lateTimes: number; absentDays: number
-  isFullAttendance: number; leaveDeduction: number; lateDeduction: number
-  absentDeduction: number; fullAttendanceBonus: number
-  employeeName?: string; empNo?: string; deptName?: string
+  id?: number; employee_id: number; attendance_year: number; attendance_month: number
+  leave_days: number; late_times: number; absent_days: number
+  is_full_attendance: number; leave_deduction: number; late_deduction: number
+  absent_deduction: number; full_attendance_bonus: number
+  employee_name?: string; emp_no?: string; dept_name?: string
 }
 
 const loading = ref(false)
@@ -23,8 +23,8 @@ const pagedData = computed(() => {
   const start = (page.value - 1) * pageSize.value
   return tableData.value.slice(start, start + pageSize.value)
 })
-const year = ref(new Date().getFullYear())
-const month = ref(new Date().getMonth() + 1)
+const startDate = ref('2025-01')
+const endDate = ref('2025-12')
 
 const dialogVisible = ref(false)
 const dialogTitle = ref('录入考勤')
@@ -33,7 +33,7 @@ const editingId = ref<number | null>(null)
 const employeeOptions = ref<any[]>([])
 
 const form = reactive({
-  employeeId: null as number | null, attendanceYear: year.value, attendanceMonth: month.value,
+  employeeId: null as number | null, attendanceYear: 2025, attendanceMonth: 6,
   leaveDays: 0, lateTimes: 0, absentDays: 0
 })
 
@@ -44,7 +44,11 @@ const rules = {
 async function loadData() {
   loading.value = true
   try {
-    const res = await request.get('/api/attendance/month', { params: { year: year.value, month: month.value } })
+    const [sy, sm] = startDate.value.split('-').map(Number)
+    const [ey, em] = endDate.value.split('-').map(Number)
+    const res = await request.get('/api/attendance/month', {
+      params: { startYear: sy, startMonth: sm, endYear: ey, endMonth: em }
+    })
     tableData.value = res.data.data || []
   } finally { loading.value = false }
 }
@@ -56,17 +60,18 @@ async function loadEmployees() {
 
 function handleAdd() {
   dialogTitle.value = '录入考勤'; editingId.value = null
-  Object.assign(form, { employeeId: null, attendanceYear: year.value, attendanceMonth: month.value, leaveDays: 0, lateTimes: 0, absentDays: 0 })
+  const [y, m] = endDate.value.split('-').map(Number)
+  Object.assign(form, { employeeId: null, attendanceYear: y, attendanceMonth: m, leaveDays: 0, lateTimes: 0, absentDays: 0 })
   dialogVisible.value = true
 }
 function handleEdit(row: Attendance) {
   dialogTitle.value = '编辑考勤'; editingId.value = row.id!
-  form.employeeId = row.employeeId
-  form.attendanceYear = row.attendanceYear
-  form.attendanceMonth = row.attendanceMonth
-  form.leaveDays = row.leaveDays
-  form.lateTimes = row.lateTimes
-  form.absentDays = row.absentDays
+  form.employeeId = row.employee_id
+  form.attendanceYear = row.attendance_year
+  form.attendanceMonth = row.attendance_month
+  form.leaveDays = row.leave_days
+  form.lateTimes = row.late_times
+  form.absentDays = row.absent_days
   dialogVisible.value = true
 }
 async function handleDelete(row: Attendance) {
@@ -99,39 +104,74 @@ onMounted(() => { loadData(); loadEmployees() })
   <div class="page-container">
     <div class="toolbar">
       <el-button type="primary" :icon="Plus" @click="handleAdd">录入考勤</el-button>
-      <el-input-number v-model="year" :min="2020" :max="2099" style="width: 100px; margin-left: 10px" />
-      <span style="margin: 0 4px; color: #606266">年</span>
-      <el-input-number v-model="month" :min="1" :max="12" style="width: 80px" />
-      <span style="margin: 0 4px; color: #606266">月</span>
+      <el-date-picker v-model="startDate" type="month" placeholder="开始月份" format="YYYY年M月" value-format="YYYY-MM" style="width: 150px; margin-left: 10px" />
+      <span style="margin: 0 8px; color: #909399">至</span>
+      <el-date-picker v-model="endDate" type="month" placeholder="结束月份" format="YYYY年M月" value-format="YYYY-MM" style="width: 150px" />
+
       <el-button type="primary" :icon="Search" @click="loadData">查询</el-button>
       <el-button :icon="Refresh" @click="loadData">刷新</el-button>
-      <el-alert type="info" show-icon :closable="false" style="margin-left: 16px; flex: 1" title="说明：事假100元/天 | 迟到50元/次 | 旷工300元/天 | 全勤奖300元/月（触发器自动计算）" />
+      <div style="flex: 1" />
+      <span style="background: #f4f4f5; color: #606266; font-size: 16px; padding: 6px 14px; border-radius: 4px; white-space: nowrap;">事假100元/天 | 迟到50元/次 | 旷工300元/天 | 全勤奖300元/月</span>
     </div>
 
-    <el-card shadow="hover">
+    <el-card shadow="never" style="border: none;">
       <div style="flex: 1; overflow: auto;">
         <el-table :data="pagedData" v-loading="loading" border stripe>
-        <el-table-column prop="empNo" label="工号" width="100" />
-        <el-table-column prop="employeeName" label="姓名" width="90" />
-        <el-table-column prop="deptName" label="部门" width="110" />
-        <el-table-column prop="leaveDays" label="事假(天)" width="90" align="center" />
-        <el-table-column prop="lateTimes" label="迟到(次)" width="90" align="center" />
-        <el-table-column prop="absentDays" label="旷工(天)" width="90" align="center" />
-        <el-table-column label="全勤" width="70" align="center">
+        <el-table-column label="工号" min-width="90" align="center">
           <template #default="{ row }">
-            <el-tag :type="row.isFullAttendance ? 'success' : 'danger'" size="small">
-              {{ row.isFullAttendance ? '是' : '否' }}
-            </el-tag>
+            <span class="att-empno">{{ row.emp_no }}</span>
           </template>
         </el-table-column>
-        <el-table-column prop="leaveDeduction" label="事假扣款" width="100" align="right" />
-        <el-table-column prop="lateDeduction" label="迟到扣款" width="100" align="right" />
-        <el-table-column prop="absentDeduction" label="旷工扣款" width="100" align="right" />
-        <el-table-column prop="fullAttendanceBonus" label="全勤奖金" width="100" align="right" />
-        <el-table-column label="操作" width="130" align="center">
+        <el-table-column label="姓名" min-width="70" align="center">
           <template #default="{ row }">
-            <el-button type="primary" link size="small" :icon="Edit" @click="handleEdit(row)">编辑</el-button>
-            <el-button type="danger" link size="small" :icon="Delete" @click="handleDelete(row)">删除</el-button>
+            <span class="att-name">{{ row.employee_name }}</span>
+          </template>
+        </el-table-column>
+        <el-table-column prop="dept_name" label="部门" min-width="100" align="center" show-overflow-tooltip />
+        <el-table-column label="事假" min-width="60" align="center">
+          <template #default="{ row }">
+            <span :class="row.leave_days > 0 ? 'att-warn' : ''">{{ row.leave_days }}天</span>
+          </template>
+        </el-table-column>
+        <el-table-column label="迟到" min-width="60" align="center">
+          <template #default="{ row }">
+            <span :class="row.late_times > 0 ? 'att-warn' : ''">{{ row.late_times }}次</span>
+          </template>
+        </el-table-column>
+        <el-table-column label="旷工" min-width="60" align="center">
+          <template #default="{ row }">
+            <span :class="row.absent_days > 0 ? 'att-danger' : ''">{{ row.absent_days }}天</span>
+          </template>
+        </el-table-column>
+        <el-table-column label="全勤" min-width="60" align="center">
+          <template #default="{ row }">
+            <span :class="row.is_full_attendance === 1 ? 'att-ok' : 'att-bad'">{{ row.is_full_attendance === 1 ? '是' : '否' }}</span>
+          </template>
+        </el-table-column>
+        <el-table-column label="事假扣款" min-width="85" align="center">
+          <template #default="{ row }">
+            <span :class="row.leave_deduction > 0 ? 'att-money' : 'att-zero'">¥{{ row.leave_deduction }}</span>
+          </template>
+        </el-table-column>
+        <el-table-column label="迟到扣款" min-width="85" align="center">
+          <template #default="{ row }">
+            <span :class="row.late_deduction > 0 ? 'att-money' : 'att-zero'">¥{{ row.late_deduction }}</span>
+          </template>
+        </el-table-column>
+        <el-table-column label="旷工扣款" min-width="85" align="center">
+          <template #default="{ row }">
+            <span :class="row.absent_deduction > 0 ? 'att-money' : 'att-zero'">¥{{ row.absent_deduction }}</span>
+          </template>
+        </el-table-column>
+        <el-table-column label="全勤奖金" min-width="85" align="center">
+          <template #default="{ row }">
+            <span :class="row.full_attendance_bonus > 0 ? 'att-bonus' : 'att-zero'">¥{{ row.full_attendance_bonus }}</span>
+          </template>
+        </el-table-column>
+        <el-table-column label="操作" min-width="100" align="center">
+          <template #default="{ row }">
+            <el-button link class="att-action edit-btn" @click="handleEdit(row)">编辑</el-button>
+            <el-button link class="att-action del-btn" @click="handleDelete(row)">删除</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -145,18 +185,18 @@ onMounted(() => { loadData(); loadEmployees() })
       <el-form ref="formRef" :model="form" :rules="rules" label-width="90px">
         <el-form-item label="员工" prop="employeeId">
           <el-select v-model="form.employeeId" placeholder="选择员工" filterable style="width: 100%">
-            <el-option v-for="e in employeeOptions" :key="e.id" :label="`${e.empNo} - ${e.name}`" :value="e.id" />
+            <el-option v-for="e in employeeOptions" :key="e.id" :label="`${e.emp_no} - ${e.name}`" :value="e.id" />
           </el-select>
         </el-form-item>
         <el-row :gutter="16">
           <el-col :span="12">
             <el-form-item label="年份">
-              <el-input-number v-model="form.attendanceYear" :min="2020" :max="2099" style="width: 100%" />
+              <el-input-number v-model="form.attendanceYear" :min="2020" :max="2099" style="width: 100%" controls-position="right" />
             </el-form-item>
           </el-col>
           <el-col :span="12">
             <el-form-item label="月份">
-              <el-input-number v-model="form.attendanceMonth" :min="1" :max="12" style="width: 100%" />
+              <el-input-number v-model="form.attendanceMonth" :min="1" :max="12" style="width: 100%" controls-position="right" />
             </el-form-item>
           </el-col>
         </el-row>
@@ -183,4 +223,18 @@ onMounted(() => { loadData(); loadEmployees() })
 .page-container :deep(.el-card) { flex: 1; display: flex; flex-direction: column; }
 .page-container :deep(.el-card__body) { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
 .toolbar { margin-bottom: 16px; display: flex; align-items: center; flex-wrap: wrap; gap: 8px; flex-shrink: 0; }
+.toolbar :deep(.el-input__inner) { font-size: 15px; }
+
+.att-empno { font-weight: 700; color: #303133; }
+.att-name { color: #1e4f8a; font-weight: 600; }
+.att-warn { color: #e6a23c; font-weight: 600; }
+.att-danger { color: #f56c6c; font-weight: 600; }
+.att-ok { color: #67c23a; font-weight: 600; }
+.att-bad { color: #f56c6c; font-weight: 600; }
+.att-money { color: #f56c6c; font-weight: 500; }
+.att-bonus { color: #67c23a; font-weight: 600; }
+.att-zero { color: #c0c4cc; }
+.att-action { font-size: 15px !important; }
+.edit-btn { color: #409eff !important; }
+.del-btn { color: #f56c6c !important; }
 </style>

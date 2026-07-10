@@ -4,7 +4,7 @@ import { ElMessage } from 'element-plus'
 import request from '@/utils/request'
 
 interface SalaryItem {
-  id: number; itemName: string; itemCode: string; itemType: string
+  id: number; itemName: string; itemType: string
   isActive: number; sortOrder: number; description: string
 }
 
@@ -37,33 +37,27 @@ onMounted(loadData)
 
 <template>
   <div class="page-container">
-    <el-card shadow="hover">
-      <template #header>
-        <span style="font-weight: 600">工资项配置列表</span>
-        <el-alert type="warning" show-icon :closable="false" style="margin-top: 10px" title="注意：系统自动计算项（SYSTEM）禁止手动修改金额，仅可启用/停用；手动录入项（MANUAL）可在月度工资中修改金额" />
-      </template>
+    <el-alert type="warning" show-icon :closable="false" style="margin-bottom: 12px; flex-shrink: 0;" title="系统自动计算项（SYSTEM）禁止手动修改；手动录入项（MANUAL）可在月度工资中修改金额" />
+    <el-card shadow="never" style="border: none;">
       <div style="flex: 1; overflow: auto;">
         <el-table :data="pagedData" v-loading="loading" border stripe>
-        <el-table-column prop="sortOrder" label="序号" width="60" align="center" />
-        <el-table-column prop="itemName" label="工资项名称" width="130" />
-        <el-table-column prop="itemCode" label="编码" width="160" />
-        <el-table-column label="类型" width="120" align="center">
+        <el-table-column prop="sortOrder" label="序号" min-width="60" align="center" />
+        <el-table-column label="工资项名称" min-width="120" align="center">
           <template #default="{ row }">
-            <el-tag :type="row.itemType === 'SYSTEM' ? 'primary' : 'success'" size="small">
-              {{ row.itemType === 'SYSTEM' ? '系统自动计算' : '手动录入' }}
-            </el-tag>
+            <span class="cfg-name">{{ row.itemName }}</span>
           </template>
         </el-table-column>
-        <el-table-column label="状态" width="100" align="center">
+        <el-table-column label="类型" min-width="140" align="center">
           <template #default="{ row }">
-            <el-switch
-              :model-value="row.isActive === 1"
-              @change="toggleActive(row)"
-              active-text="启用" inactive-text="停用"
-            />
+            <span :class="row.itemType === 'SYSTEM' ? 'cfg-type-sys' : 'cfg-type-manual'">{{ row.itemType === 'SYSTEM' ? '系统自动' : '手动录入' }}</span>
           </template>
         </el-table-column>
-        <el-table-column prop="description" label="描述" min-width="240" show-overflow-tooltip />
+        <el-table-column label="状态" min-width="80" align="center">
+          <template #default="{ row }">
+            <el-switch :model-value="row.isActive === 1" @change="toggleActive(row)" size="small" />
+          </template>
+        </el-table-column>
+        <el-table-column prop="description" label="描述" min-width="180" align="center" show-overflow-tooltip />
       </el-table>
       </div>
       <div style="display: flex; justify-content: center; padding: 14px 0 4px; flex-shrink: 0;">
@@ -77,4 +71,8 @@ onMounted(loadData)
 .page-container { height: calc(100vh - 100px); display: flex; flex-direction: column; }
 .page-container :deep(.el-card) { flex: 1; display: flex; flex-direction: column; }
 .page-container :deep(.el-card__body) { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+
+.cfg-name { color: #1e4f8a; font-weight: 700; }
+.cfg-type-sys { color: #1a3a6c; font-weight: 600; }
+.cfg-type-manual { color: #909399; font-weight: 600; }
 </style>

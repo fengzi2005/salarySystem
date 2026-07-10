@@ -34,6 +34,20 @@ public class AttendanceServiceImpl extends ServiceImpl<AttendanceMapper, Attenda
     }
 
     @Override
+    public List<Map<String, Object>> getMonthlyAttendanceRange(Integer startYear, Integer startMonth,
+                                                                 Integer endYear, Integer endMonth) {
+        String sql = "SELECT a.*, e.name AS employee_name, e.emp_no, d.dept_name " +
+                     "FROM attendance a " +
+                     "LEFT JOIN employee e ON a.employee_id = e.id " +
+                     "LEFT JOIN department d ON e.department_id = d.id " +
+                     "WHERE (a.attendance_year > ? OR (a.attendance_year = ? AND a.attendance_month >= ?)) " +
+                     "AND (a.attendance_year < ? OR (a.attendance_year = ? AND a.attendance_month <= ?)) " +
+                     "ORDER BY a.attendance_year, a.attendance_month, d.id, e.id";
+        return jdbcTemplate.queryForList(sql, startYear, startYear, startMonth,
+                                               endYear, endYear, endMonth);
+    }
+
+    @Override
     @Transactional(rollbackFor = Exception.class)
     public void batchImport(List<Attendance> attendanceList) {
         // 逐条插入，触发器会自动计算扣款
