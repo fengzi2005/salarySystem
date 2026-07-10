@@ -13,6 +13,7 @@ export const useAuthStore = defineStore('auth', () => {
     localStorage.getItem('employeeId') ? Number(localStorage.getItem('employeeId')) : null
   )
   const employeeName = ref<string>(localStorage.getItem('employeeName') || '')
+  const positionName = ref<string>(localStorage.getItem('positionName') || '')
 
   /** 是否已登录 */
   const isLoggedIn = computed(() => !!token.value)
@@ -35,18 +36,21 @@ export const useAuthStore = defineStore('auth', () => {
     roleCode: string
     employeeId: number | null
     employeeName: string
+    positionName?: string
   }) {
     token.value = data.token
     username.value = data.username
     roleCode.value = data.roleCode
     employeeId.value = data.employeeId
     employeeName.value = data.employeeName
+    positionName.value = data.positionName || ''
 
     localStorage.setItem('token', data.token)
     localStorage.setItem('username', data.username)
     localStorage.setItem('roleCode', data.roleCode)
     localStorage.setItem('employeeId', String(data.employeeId || ''))
     localStorage.setItem('employeeName', data.employeeName || '')
+    localStorage.setItem('positionName', data.positionName || '')
   }
 
   /**
@@ -58,12 +62,14 @@ export const useAuthStore = defineStore('auth', () => {
     roleCode.value = ''
     employeeId.value = null
     employeeName.value = ''
+    positionName.value = ''
 
     localStorage.removeItem('token')
     localStorage.removeItem('username')
     localStorage.removeItem('roleCode')
     localStorage.removeItem('employeeId')
     localStorage.removeItem('employeeName')
+    localStorage.removeItem('positionName')
   }
 
   return {
@@ -72,6 +78,7 @@ export const useAuthStore = defineStore('auth', () => {
     roleCode,
     employeeId,
     employeeName,
+    positionName,
     isLoggedIn,
     isAdmin,
     isManager,

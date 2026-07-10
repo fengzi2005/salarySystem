@@ -139,6 +139,19 @@ BEGIN
     DECLARE v_total_deduction DECIMAL(10,2);
     DECLARE v_net_salary DECIMAL(10,2);
     DECLARE v_salary_id BIGINT;
+    -- 工资项配置开关
+    DECLARE v_cfg_base_salary TINYINT DEFAULT 1;
+    DECLARE v_cfg_position_salary TINYINT DEFAULT 1;
+    DECLARE v_cfg_title_salary TINYINT DEFAULT 1;
+    DECLARE v_cfg_seniority_pay TINYINT DEFAULT 1;
+    DECLARE v_cfg_attendance_bonus TINYINT DEFAULT 1;
+    DECLARE v_cfg_leave_deduction TINYINT DEFAULT 1;
+    DECLARE v_cfg_late_deduction TINYINT DEFAULT 1;
+    DECLARE v_cfg_absent_deduction TINYINT DEFAULT 1;
+    DECLARE v_cfg_project_bonus TINYINT DEFAULT 1;
+    DECLARE v_cfg_tax_deduction TINYINT DEFAULT 1;
+    DECLARE v_cfg_other_additions TINYINT DEFAULT 1;
+    DECLARE v_cfg_other_deductions TINYINT DEFAULT 1;
     DECLARE v_rule_id BIGINT;
     DECLARE v_seniority_years INT;
     DECLARE v_first_year_amount DECIMAL(10,2);
@@ -172,6 +185,20 @@ BEGIN
         SET v_increment = 300.00;
         SET v_effective_date = '2000-01-01';
     END IF;
+
+    -- 读取工资项启停状态
+    SELECT IFNULL((SELECT is_active FROM salary_item_config WHERE item_code = 'BASE_SALARY'), 1) INTO v_cfg_base_salary;
+    SELECT IFNULL((SELECT is_active FROM salary_item_config WHERE item_code = 'POSITION_SALARY'), 1) INTO v_cfg_position_salary;
+    SELECT IFNULL((SELECT is_active FROM salary_item_config WHERE item_code = 'TITLE_SALARY'), 1) INTO v_cfg_title_salary;
+    SELECT IFNULL((SELECT is_active FROM salary_item_config WHERE item_code = 'SENIORITY_PAY'), 1) INTO v_cfg_seniority_pay;
+    SELECT IFNULL((SELECT is_active FROM salary_item_config WHERE item_code = 'ATTENDANCE_BONUS'), 1) INTO v_cfg_attendance_bonus;
+    SELECT IFNULL((SELECT is_active FROM salary_item_config WHERE item_code = 'LEAVE_DEDUCTION'), 1) INTO v_cfg_leave_deduction;
+    SELECT IFNULL((SELECT is_active FROM salary_item_config WHERE item_code = 'LATE_DEDUCTION'), 1) INTO v_cfg_late_deduction;
+    SELECT IFNULL((SELECT is_active FROM salary_item_config WHERE item_code = 'ABSENT_DEDUCTION'), 1) INTO v_cfg_absent_deduction;
+    SELECT IFNULL((SELECT is_active FROM salary_item_config WHERE item_code = 'PROJECT_BONUS'), 1) INTO v_cfg_project_bonus;
+    SELECT IFNULL((SELECT is_active FROM salary_item_config WHERE item_code = 'TAX_DEDUCTION'), 1) INTO v_cfg_tax_deduction;
+    SELECT IFNULL((SELECT is_active FROM salary_item_config WHERE item_code = 'OTHER_ADDITIONS'), 1) INTO v_cfg_other_additions;
+    SELECT IFNULL((SELECT is_active FROM salary_item_config WHERE item_code = 'OTHER_DEDUCTIONS'), 1) INTO v_cfg_other_deductions;
 
     OPEN cur_employee;
 
@@ -230,6 +257,20 @@ BEGIN
             SET v_other_deductions = 0;
         END IF;
 
+        -- 根据配置停用相应工资项
+        IF v_cfg_base_salary = 0 THEN SET v_base_salary = 0; END IF;
+        IF v_cfg_position_salary = 0 THEN SET v_position_salary = 0; END IF;
+        IF v_cfg_title_salary = 0 THEN SET v_title_salary = 0; END IF;
+        IF v_cfg_seniority_pay = 0 THEN SET v_seniority_amount = 0; END IF;
+        IF v_cfg_attendance_bonus = 0 THEN SET v_full_attendance_bonus = 0; END IF;
+        IF v_cfg_leave_deduction = 0 THEN SET v_leave_deduction = 0; END IF;
+        IF v_cfg_late_deduction = 0 THEN SET v_late_deduction = 0; END IF;
+        IF v_cfg_absent_deduction = 0 THEN SET v_absent_deduction = 0; END IF;
+        IF v_cfg_project_bonus = 0 THEN SET v_project_bonus = 0; END IF;
+        IF v_cfg_tax_deduction = 0 THEN SET v_tax_deduction = 0; END IF;
+        IF v_cfg_other_additions = 0 THEN SET v_other_additions = 0; END IF;
+        IF v_cfg_other_deductions = 0 THEN SET v_other_deductions = 0; END IF;
+
         -- 计算汇总
         -- 应发 = 基本工资 + 岗位工资 + 职级工资 + 工龄工资 + 全勤奖 + 项目奖金 + 其他加项
         SET v_gross_salary = v_base_salary + v_position_salary + v_title_salary
@@ -244,41 +285,46 @@ BEGIN
         SET v_net_salary = v_gross_salary - v_total_deduction;
 
         -- 插入或更新月度工资记录
-        INSERT INTO monthly_salary (
-            employee_id, salary_year, salary_month,
-            base_salary, position_salary, title_salary, seniority_pay,
-            full_attendance_bonus, leave_deduction, late_deduction, absent_deduction,
-            project_bonus, tax_deduction, other_additions, other_deductions,
-            gross_salary, total_deduction, net_salary, status
-        ) VALUES (
-            v_employee_id, p_year, p_month,
-            v_base_salary, v_position_salary, v_title_salary, v_seniority_amount,
-            v_full_attendance_bonus, v_leave_deduction, v_late_deduction, v_absent_deduction,
-            v_project_bonus, v_tax_deduction, v_other_additions, v_other_deductions,
-            v_gross_salary, v_total_deduction, v_net_salary, 'DRAFT'
-        ) ON DUPLICATE KEY UPDATE
-            base_salary = VALUES(base_salary),
-            position_salary = VALUES(position_salary),
-            title_salary = VALUES(title_salary),
-            seniority_pay = VALUES(seniority_pay),
-            full_attendance_bonus = VALUES(full_attendance_bonus),
-            leave_deduction = VALUES(leave_deduction),
-            late_deduction = VALUES(late_deduction),
-            absent_deduction = VALUES(absent_deduction),
-            gross_salary = VALUES(gross_salary),
-            total_deduction = VALUES(total_deduction),
-            net_salary = VALUES(net_salary),
-            update_time = NOW();
+        -- 检查是否已确认，已确认则跳过
+        IF NOT EXISTS (SELECT 1 FROM monthly_salary WHERE employee_id = v_employee_id AND salary_year = p_year AND salary_month = p_month AND status = 'CONFIRMED') THEN
+            INSERT INTO monthly_salary (
+                employee_id, salary_year, salary_month,
+                base_salary, position_salary, title_salary, seniority_pay,
+                full_attendance_bonus, leave_deduction, late_deduction, absent_deduction,
+                project_bonus, tax_deduction, other_additions, other_deductions,
+                gross_salary, total_deduction, net_salary, status
+            ) VALUES (
+                v_employee_id, p_year, p_month,
+                v_base_salary, v_position_salary, v_title_salary, v_seniority_amount,
+                v_full_attendance_bonus, v_leave_deduction, v_late_deduction, v_absent_deduction,
+                v_project_bonus, v_tax_deduction, v_other_additions, v_other_deductions,
+                v_gross_salary, v_total_deduction, v_net_salary, 'DRAFT'
+            ) ON DUPLICATE KEY UPDATE
+                base_salary = VALUES(base_salary),
+                position_salary = VALUES(position_salary),
+                title_salary = VALUES(title_salary),
+                seniority_pay = VALUES(seniority_pay),
+                full_attendance_bonus = VALUES(full_attendance_bonus),
+                leave_deduction = VALUES(leave_deduction),
+                late_deduction = VALUES(late_deduction),
+                absent_deduction = VALUES(absent_deduction),
+                gross_salary = VALUES(gross_salary),
+                total_deduction = VALUES(total_deduction),
+                net_salary = VALUES(net_salary),
+                update_time = NOW();
+        END IF;
 
-        -- 记录工龄工资明细
-        INSERT INTO seniority_pay_record (
-            employee_id, salary_year, salary_month, seniority_years, seniority_amount, rule_id
-        ) VALUES (
-            v_employee_id, p_year, p_month, v_seniority_years, v_seniority_amount, v_rule_id
-        ) ON DUPLICATE KEY UPDATE
-            seniority_years = VALUES(seniority_years),
-            seniority_amount = VALUES(seniority_amount),
-            rule_id = VALUES(rule_id);
+        -- 记录工龄工资明细（仅草稿状态）
+        IF NOT EXISTS (SELECT 1 FROM monthly_salary WHERE employee_id = v_employee_id AND salary_year = p_year AND salary_month = p_month AND status = 'CONFIRMED') THEN
+            INSERT INTO seniority_pay_record (
+                employee_id, salary_year, salary_month, seniority_years, seniority_amount, rule_id
+            ) VALUES (
+                v_employee_id, p_year, p_month, v_seniority_years, v_seniority_amount, v_rule_id
+            ) ON DUPLICATE KEY UPDATE
+                seniority_years = VALUES(seniority_years),
+                seniority_amount = VALUES(seniority_amount),
+                rule_id = VALUES(rule_id);
+        END IF;
 
     END LOOP;
 

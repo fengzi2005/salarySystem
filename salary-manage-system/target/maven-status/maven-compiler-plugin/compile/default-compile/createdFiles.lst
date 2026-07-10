@@ -33,7 +33,6 @@ com\heima\salarymanagesystem\service\impl\MonthlySalaryServiceImpl.class
 com\heima\salarymanagesystem\controller\SeniorityPayRuleController.class
 com\heima\salarymanagesystem\common\JwtUtils.class
 com\heima\salarymanagesystem\controller\DepartmentController.class
-com\heima\salarymanagesystem\controller\EmployeeController.class
 com\heima\salarymanagesystem\mapper\AttendanceMapper.class
 com\heima\salarymanagesystem\mapper\PositionMapper.class
 com\heima\salarymanagesystem\mapper\RoleMapper.class
@@ -42,7 +41,6 @@ com\heima\salarymanagesystem\controller\TitleController.class
 com\heima\salarymanagesystem\SalaryManageSystemApplication.class
 com\heima\salarymanagesystem\service\impl\AttendanceServiceImpl.class
 com\heima\salarymanagesystem\interceptor\JwtTokenInterceptor.class
-com\heima\salarymanagesystem\service\impl\EmployeeServiceImpl.class
 com\heima\salarymanagesystem\service\impl\DepartmentServiceImpl.class
 com\heima\salarymanagesystem\service\EmployeeService.class
 com\heima\salarymanagesystem\service\AttendanceService.class

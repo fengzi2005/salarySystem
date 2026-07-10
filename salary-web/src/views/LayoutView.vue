@@ -27,25 +27,23 @@ const authStore = useAuthStore()
 
 const isCollapse = ref(false)
 
-/** 侧边栏菜单项 */
+/** 侧边栏菜单项（按角色过滤） */
 const menuItems = computed(() => {
-  const items = [
-    { path: '/dashboard', title: '系统首页', icon: HomeFilled },
-    { path: '/department', title: '部门管理', icon: OfficeBuilding },
-    { path: '/employee', title: '员工管理', icon: User },
-    { path: '/position', title: '岗位管理', icon: Briefcase },
-    { path: '/title', title: '职称管理', icon: Medal },
-    { path: '/attendance', title: '考勤管理', icon: Clock },
-    { path: '/salary-config', title: '工资项配置', icon: Setting },
-    { path: '/salary', title: '工资管理', icon: Money },
-    { path: '/reports', title: '统计报表', icon: DataAnalysis },
-    { path: '/seniority-rule', title: '工龄工资规则', icon: Timer }
+  const role = authStore.roleCode
+  const allItems = [
+    { path: '/dashboard', title: '系统首页', icon: HomeFilled, roles: ['ADMIN', 'MANAGER', 'EMPLOYEE'] },
+    { path: '/department', title: '部门管理', icon: OfficeBuilding, roles: ['ADMIN', 'MANAGER'] },
+    { path: '/employee', title: '员工管理', icon: User, roles: ['ADMIN', 'MANAGER'] },
+    { path: '/position', title: '岗位管理', icon: Briefcase, roles: ['ADMIN'] },
+    { path: '/title', title: '职称管理', icon: Medal, roles: ['ADMIN'] },
+    { path: '/attendance', title: '考勤管理', icon: Clock, roles: ['ADMIN'] },
+    { path: '/salary-config', title: '工资项配置', icon: Setting, roles: ['ADMIN'] },
+    { path: '/salary', title: '工资管理', icon: Money, roles: ['ADMIN'] },
+    { path: '/reports', title: '统计报表', icon: DataAnalysis, roles: ['ADMIN'] },
+    { path: '/seniority-rule', title: '工龄工资规则', icon: Timer, roles: ['ADMIN'] },
+    { path: '/my-salary', title: '薪资明细', icon: Document, roles: ['ADMIN', 'MANAGER', 'EMPLOYEE'] }
   ]
-
-  // 所有角色都有"我的工资"
-  items.push({ path: '/my-salary', title: '我的工资', icon: Document })
-
-  return items
+  return allItems.filter(item => item.roles.includes(role))
 })
 
 /** 当前激活菜单项 */
@@ -119,7 +117,7 @@ function handleLogout() {
           <div class="header-user">
             <el-icon><UserFilled /></el-icon>
             <span class="user-name">{{ authStore.employeeName || authStore.username }}</span>
-            <span class="user-role">{{ authStore.isAdmin ? '管理员' : authStore.isManager ? '管理人员' : '员工' }}</span>
+            <span class="user-role">{{ authStore.isAdmin ? '管理员' : (authStore.positionName || '员工') }}</span>
             <el-divider direction="vertical" />
             <el-button link :icon="SwitchButton" @click="handleLogout" class="logout-btn">退出登录</el-button>
           </div>
@@ -129,6 +127,14 @@ function handleLogout() {
       <!-- 主内容区域 -->
       <el-main class="layout-main">
         <RouterView />
+        <div v-if="route.path === '/dashboard'" class="layout-footer">
+          <div class="footer-content">
+            <span>工资管理系统 v1.0</span>
+            <span>技术支持：计算机与人工智能学院</span>
+            <span>技术架构：Spring Boot 3.4.1 + Vue 3 + Element Plus</span>
+            <span>© 2026 瘋子 版权所有 粤ICP备20240310140号</span>
+          </div>
+        </div>
       </el-main>
     </el-container>
   </el-container>
@@ -275,8 +281,33 @@ function handleLogout() {
 /* 主内容区域 */
 .layout-main {
   flex: 1;
-  padding: 20px;
+  padding: 20px 20px 8px;
   overflow-y: auto;
   background: #f0f4f8;
+}
+
+/* 底栏 */
+.layout-footer {
+  border-top: 1px solid #e8ecf1;
+  margin-top: 0;
+  padding: 20px 24px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.footer-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  font-size: 15px;
+  color: #909399;
+  gap: 10px;
+  line-height: 1.6;
+}
+
+.footer-content :deep(.el-divider--vertical) {
+  height: 14px;
+  margin: 0 10px;
 }
 </style>

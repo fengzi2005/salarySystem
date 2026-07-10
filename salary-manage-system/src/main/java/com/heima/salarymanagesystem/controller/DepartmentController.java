@@ -2,8 +2,10 @@ package com.heima.salarymanagesystem.controller;
 
 import com.heima.salarymanagesystem.common.Result;
 import com.heima.salarymanagesystem.entity.Department;
+import com.heima.salarymanagesystem.mapper.EmployeeMapper;
 import com.heima.salarymanagesystem.service.DepartmentService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -19,11 +21,10 @@ import java.util.Map;
 public class DepartmentController {
 
     private final DepartmentService departmentService;
+    private final EmployeeMapper employeeMapper;
+    private final JdbcTemplate jdbcTemplate;
 
-    /**
-     * 获取部门树结构
-     * GET /api/department/tree
-     */
+    /** 获取部门树结构，所有角色可见全部 */
     @GetMapping("/tree")
     public Result<List<Map<String, Object>>> getDeptTree() {
         return Result.ok(departmentService.getDeptTree());
@@ -98,6 +99,17 @@ public class DepartmentController {
      */
     @DeleteMapping("/{id}")
     public Result<Boolean> delete(@PathVariable Long id) {
+        // 检查是否有子部门
+        List<Department> children = departmentService.getChildren(id);
+        if (children != null && !children.isEmpty()) {
+            return Result.fail("该部门下有子部门，请先删除子部门");
+        }
+        // 检查是否有员工
+        int empCount = jdbcTemplate.queryForObject(
+            "SELECT COUNT(*) FROM employee WHERE department_id = ? AND status = 1", Integer.class, id);
+        if (empCount > 0) {
+            return Result.fail("该部门下有" + empCount + "名在职员工，请先将员工调离");
+        }
         return Result.ok(departmentService.removeById(id));
     }
 }

@@ -11,8 +11,8 @@ const router = useRouter()
 const authStore = useAuthStore()
 
 const loginForm = reactive({
-  username: 'admin',
-  password: '123456'
+  username: '',
+  password: ''
 })
 
 const loading = ref(false)
@@ -44,7 +44,8 @@ async function handleLogin() {
         username: data.username,
         roleCode: data.roleCode,
         employeeId: data.employeeId,
-        employeeName: data.employeeName || ''
+        employeeName: data.employeeName || '',
+        positionName: data.positionName || ''
       })
       ElMessage.success('登录成功')
       router.push('/dashboard')
@@ -108,8 +109,10 @@ async function handleLogin() {
       </el-form>
 
       <div class="login-tips">
-        <p>演示账号：admin / 123456（管理员）</p>
-        <p>zhangsan / 123456（普通员工）</p>
+        <p style="font-weight:600;color:#606266;margin-bottom:6px;">演示账号</p>
+        <p>admin / 123456（管理员）</p>
+        <p>sunqi / 123456（总经理）</p>
+        <p>zhoumingyuan / 123456（普通员工）</p>
       </div>
     </div>
   </div>
@@ -126,7 +129,7 @@ async function handleLogin() {
 }
 
 .login-card {
-  width: 420px;
+  width: 460px;
   background: #ffffff;
   border-radius: 16px;
   padding: 48px 40px;
@@ -141,7 +144,7 @@ async function handleLogin() {
 }
 
 .login-card-title {
-  font-size: 22px;
+  font-size: 28px;
   font-weight: 700;
   color: #1a3a6c;
   text-align: center;

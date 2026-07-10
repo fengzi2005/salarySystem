@@ -48,6 +48,42 @@ public class EmployeeServiceImpl extends ServiceImpl<EmployeeMapper, Employee> i
         return count != null ? count : 0;
     }
 
+    /**
+     * 按部门分页查询员工（含子部门）
+     */
+    public List<Map<String, Object>> getEmployeeListByDept(Integer page, Integer pageSize, Long deptId) {
+        List<Long> deptIds = getAllSubDeptIds(deptId);
+        deptIds.add(deptId);
+        String placeholders = deptIds.stream().map(id -> "?").reduce((a, b) -> a + "," + b).orElse("?");
+        String sql = "SELECT * FROM v_employee_info WHERE dept_id IN (" + placeholders + ") ORDER BY dept_id, employee_id LIMIT ? OFFSET ?";
+        int offset = (page - 1) * pageSize;
+        Object[] params = new Object[deptIds.size() + 2];
+        for (int i = 0; i < deptIds.size(); i++) params[i] = deptIds.get(i);
+        params[deptIds.size()] = pageSize;
+        params[deptIds.size() + 1] = offset;
+        return jdbcTemplate.queryForList(sql, params);
+    }
+
+    public long getEmployeeCountByDept(Long deptId) {
+        List<Long> deptIds = getAllSubDeptIds(deptId);
+        deptIds.add(deptId);
+        String placeholders = deptIds.stream().map(id -> "?").reduce((a, b) -> a + "," + b).orElse("?");
+        Long count = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM v_employee_info WHERE dept_id IN (" + placeholders + ")", Long.class, deptIds.toArray());
+        return count != null ? count : 0;
+    }
+
+    private List<Long> getAllSubDeptIds(Long parentId) {
+        List<Long> ids = new java.util.ArrayList<>();
+        String sql = "SELECT id FROM department WHERE parent_id = ?";
+        List<Map<String, Object>> children = jdbcTemplate.queryForList(sql, parentId);
+        for (Map<String, Object> child : children) {
+            Long childId = ((Number) child.get("id")).longValue();
+            ids.add(childId);
+            ids.addAll(getAllSubDeptIds(childId));
+        }
+        return ids;
+    }
+
     @Override
     public List<Map<String, Object>> searchEmployees(String keyword, Long deptId, Long positionId) {
         StringBuilder sql = new StringBuilder("SELECT * FROM v_employee_info WHERE 1=1 ");
@@ -75,6 +111,19 @@ public class EmployeeServiceImpl extends ServiceImpl<EmployeeMapper, Employee> i
     public List<Map<String, Object>> getActiveEmployees() {
         return jdbcTemplate.queryForList(
                 "SELECT id, emp_no, name, department_id, position_id, title_id FROM employee WHERE status = 1 ORDER BY id");
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public boolean removeById(java.io.Serializable id) {
+        Long empId = (Long) id;
+        // 级联删除关联数据，防止孤儿记录
+        jdbcTemplate.update("DELETE FROM attendance WHERE employee_id = ?", empId);
+        jdbcTemplate.update("DELETE FROM monthly_salary WHERE employee_id = ?", empId);
+        jdbcTemplate.update("DELETE FROM seniority_pay_record WHERE employee_id = ?", empId);
+        jdbcTemplate.update("DELETE FROM employee_change_log WHERE employee_id = ?", empId);
+        jdbcTemplate.update("DELETE FROM sys_user WHERE employee_id = ?", empId);
+        return super.removeById(id);
     }
 
     @Override

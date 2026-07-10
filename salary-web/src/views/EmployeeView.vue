@@ -4,6 +4,25 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import type { FormInstance } from 'element-plus'
 import { Plus, Search, Delete, Edit, Refresh, View } from '@element-plus/icons-vue'
 import request from '@/utils/request'
+import { useAuthStore } from '@/stores/auth'
+
+const authStore = useAuthStore()
+// 管理岗位级别映射
+const mgmtLevelMap: Record<string, number> = { '总经理': 4, '副总经理': 3, '部门经理': 2, '分部经理': 1 }
+
+/** 判断当前用户是否有权管理目标员工 */
+function canManageEmployee(row: any): boolean {
+  if (authStore.isAdmin) return true
+  const myPos = authStore.positionName
+  if (!myPos || !mgmtLevelMap[myPos]) return false
+  // 管理岗才能管理别人
+  if (row.position_type === 'TECHNICAL') return true
+  if (row.position_type === 'MANAGEMENT') {
+    const targetLevel = mgmtLevelMap[row.position_name] || 0
+    return mgmtLevelMap[myPos] > targetLevel
+  }
+  return false
+}
 
 interface Employee {
   employee_id?: number
@@ -28,15 +47,20 @@ interface Employee {
 const loading = ref(false)
 const tableData = ref<Employee[]>([])
 const sortedData = computed(() => {
-  return [...tableData.value].sort((a, b) => {
-    const titleDiff = (b.title_salary || 0) - (a.title_salary || 0)
+  const sorted = [...tableData.value].sort((a, b) => {
+    const ta = a.title_salary ?? -1
+    const tb = b.title_salary ?? -1
+    const titleDiff = tb - ta
     if (titleDiff !== 0) return titleDiff
-    return (b.base_salary || 0) - (a.base_salary || 0)
+    return (b.base_salary ?? 0) - (a.base_salary ?? 0)
   })
+  total.value = sorted.length
+  const start = (page.value - 1) * pageSize.value
+  return sorted.slice(start, start + pageSize.value)
 })
 const searchKeyword = ref('')
 const page = ref(1)
-const pageSize = ref(12)
+const pageSize = ref(50)
 const total = ref(0)
 
 const dialogVisible = ref(false)
@@ -58,10 +82,24 @@ const rules = {
     { required: true, message: '请输入员工编号', trigger: 'blur' },
     { pattern: /^FS\d{7}$/, message: '工号格式必须为FS+7位数字，如FS2025001', trigger: 'blur' }
   ],
-  name: [{ required: true, message: '请输入姓名', trigger: 'blur' }],
+  name: [
+    { required: true, message: '请输入姓名', trigger: 'blur' },
+    { min: 2, max: 20, message: '姓名长度2-20个字符', trigger: 'blur' }
+  ],
   gender: [{ required: true, message: '请选择性别', trigger: 'change' }],
   departmentId: [{ required: true, message: '请选择部门', trigger: 'change' }],
-  entryDate: [{ required: true, message: '请选择入职日期', trigger: 'change' }]
+  positionId: [{ required: true, message: '请选择岗位', trigger: 'change' }],
+  entryDate: [{ required: true, message: '请选择入职日期', trigger: 'change' }],
+  baseSalary: [
+    { required: true, message: '请输入基本工资', trigger: 'blur' },
+    { type: 'number', min: 0, message: '基本工资不能为负数', trigger: 'blur' }
+  ],
+  phone: [
+    { pattern: /^1[3-9]\d{9}$/, message: '请输入正确的手机号', trigger: 'blur' }
+  ],
+  email: [
+    { pattern: /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.(com|cn)$/, message: '邮箱需以.com或.cn结尾', trigger: 'blur' }
+  ]
 }
 
 async function loadData() {
@@ -78,24 +116,17 @@ async function loadData() {
         params: { page: page.value, pageSize: pageSize.value }
       })
       const data = res.data.data
-      tableData.value = data.records || []
-      total.value = data.total || 0
+      const allRecords = data.records || []
+      total.value = allRecords.length
+      tableData.value = allRecords
     }
   } finally {
     loading.value = false
   }
 }
 
-function handlePageChange(p: number) {
-  page.value = p
-  loadData()
-}
-
-function handleSizeChange(s: number) {
-  pageSize.value = s
-  page.value = 1
-  loadData()
-}
+function handlePageChange(p: number) { page.value = p }
+function handleSizeChange(s: number) { pageSize.value = s; page.value = 1 }
 
 async function loadOptions() {
   const [deptRes, posRes, titleRes] = await Promise.all([
@@ -147,11 +178,11 @@ async function handleSubmit() {
   try {
     const data = { ...form, id: editingId.value }
     if (editingId.value) {
-      await request.put('/api/employee', data)
-      ElMessage.success('更新成功')
+      const res = await request.put('/api/employee', data)
+      ElMessage.success(res.data.message || '更新成功')
     } else {
-      await request.post('/api/employee', data)
-      ElMessage.success('新增成功')
+      const res = await request.post('/api/employee', data)
+      ElMessage.success(res.data.message || '新增成功')
     }
     dialogVisible.value = false
     loadData()
@@ -166,7 +197,7 @@ onMounted(() => { loadData(); loadOptions() })
 <template>
   <div class="page-container">
     <div class="toolbar">
-      <el-button type="primary" :icon="Plus" @click="handleAdd">新增员工</el-button>
+      <el-button type="primary" :icon="Plus" :disabled="!authStore.isAdmin && !mgmtLevelMap[authStore.positionName]" @click="handleAdd">新增员工</el-button>
       <el-input v-model="searchKeyword" placeholder="搜索姓名/编号" prefix-icon="Search" clearable style="width: 200px; margin-left: 10px" @clear="loadData" @keyup.enter="loadData" />
       <el-button type="primary" :icon="Search" @click="loadData" style="margin-left: 8px">搜索</el-button>
       <el-button :icon="Refresh" @click="loadData">刷新</el-button>
@@ -211,8 +242,8 @@ onMounted(() => { loadData(); loadOptions() })
         </el-table-column>
         <el-table-column label="操作" width="120" align="center" fixed="right">
           <template #default="{ row }">
-            <el-button link class="emp-action-btn edit-btn" @click="handleEdit(row)">编辑</el-button>
-            <el-button link class="emp-action-btn del-btn" @click="handleDelete(row)">删除</el-button>
+            <el-button link class="emp-action-btn edit-btn" :disabled="!canManageEmployee(row)" @click="handleEdit(row)">编辑</el-button>
+            <el-button link class="emp-action-btn del-btn" :disabled="!canManageEmployee(row)" @click="handleDelete(row)">删除</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -300,12 +331,12 @@ onMounted(() => { loadData(); loadOptions() })
             </el-form-item>
           </el-col>
           <el-col :span="12">
-            <el-form-item label="电话">
+            <el-form-item label="电话" prop="phone">
               <el-input v-model="form.phone" placeholder="联系电话" />
             </el-form-item>
           </el-col>
         </el-row>
-        <el-form-item label="邮箱">
+        <el-form-item label="邮箱" prop="email">
           <el-input v-model="form.email" placeholder="电子邮箱" />
         </el-form-item>
       </el-form>

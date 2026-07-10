@@ -67,10 +67,12 @@ public class AuthServiceImpl implements AuthService {
         // 查询关联的员工信息
         String employeeName = null;
         Long employeeId = user.getEmployeeId();
+        String positionName = null;
         if (employeeId != null) {
-            Employee employee = employeeMapper.selectById(employeeId);
-            if (employee != null) {
-                employeeName = employee.getName();
+            Map<String, Object> empInfo = employeeMapper.selectEmployeeInfoById(employeeId);
+            if (empInfo != null) {
+                employeeName = (String) empInfo.get("employee_name");
+                positionName = (String) empInfo.get("position_name");
             }
         }
 
@@ -82,6 +84,7 @@ public class AuthServiceImpl implements AuthService {
         result.put("roleCode", roleCode);
         result.put("employeeId", employeeId);
         result.put("employeeName", employeeName);
+        result.put("positionName", positionName);
         return result;
     }
 

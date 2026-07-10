@@ -4,6 +4,121 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import type { FormInstance } from 'element-plus'
 import { Plus, Search, Delete, Edit, Refresh } from '@element-plus/icons-vue'
 import request from '@/utils/request'
+import { useAuthStore } from '@/stores/auth'
+
+const authStore = useAuthStore()
+const myDeptId = ref<number | null>(null)
+
+// 获取当前用户所在部门ID
+async function loadMyDept() {
+  if (authStore.isAdmin) return
+  if (authStore.employeeId) {
+    try {
+      const res = await request.get(`/api/employee/info/${authStore.employeeId}`)
+      myDeptId.value = res.data.data?.dept_id || null
+    } catch {}
+  }
+}
+
+// 按岗位确定可编辑的部门层级
+function getAllowedLevels(): number[] {
+  if (authStore.isAdmin) return [1, 2, 3]
+  const p = authStore.positionName
+  if (p === '总经理' || p === '副总经理') return [1, 2, 3]
+  if (p === '部门经理') return [2, 3]
+  if (p === '分部经理') return [3]
+  return []
+}
+
+// 找到管辖根部门
+function findScopeRootId(deptId: number): number | null {
+  const dept = findDeptById(deptId, allTreeData.value)
+  if (!dept) return null
+  const p = authStore.positionName
+  // 分部经理：找二级祖先（一级部门）
+  if (p === '分部经理') {
+    if (dept.deptLevel === 3) return findAncestorByLevel(deptId, 2)
+    return deptId
+  }
+  // 部门经理：所在二级部门，或一级
+  if (p === '部门经理') {
+    if (dept.deptLevel === 3) return findAncestorByLevel(deptId, 2)
+    if (dept.deptLevel === 2) return deptId
+  }
+  // 总经理/副总经理：总部
+  return findAncestorByLevel(deptId, 1)
+}
+
+function findDeptById(id: number, nodes: Department[]): Department | null {
+  for (const node of nodes) {
+    if (node.id === id) return node
+    if (node.children) {
+      const found = findDeptById(id, node.children)
+      if (found) return found
+    }
+  }
+  return null
+}
+
+function findAncestorByLevel(deptId: number, targetLevel: number): number | null {
+  const dept = findDeptById(deptId, allTreeData.value)
+  if (!dept) return null
+  if (dept.deptLevel === targetLevel) return dept.id!
+  if (dept.parentId && dept.parentId !== 0) return findAncestorByLevel(dept.parentId, targetLevel)
+  return null
+}
+
+// 检查目标是否在管辖根部门树下
+function isUnderRoot(rootId: number, targetId: number, nodes: Department[]): boolean {
+  for (const node of nodes) {
+    if (node.id === rootId) {
+      if (node.id === targetId) return true
+      if (node.children) {
+        for (const child of node.children) {
+          if (child.id === targetId) return true
+          if (child.children && isUnderRootRecur(child.children, targetId)) return true
+        }
+      }
+      return false
+    }
+    if (node.children && isUnderRoot(rootId, targetId, node.children)) return true
+  }
+  return false
+}
+
+function isUnderRootRecur(nodes: Department[], targetId: number): boolean {
+  for (const node of nodes) {
+    if (node.id === targetId) return true
+    if (node.children && isUnderRootRecur(node.children, targetId)) return true
+  }
+  return false
+}
+
+function isInScope(targetDeptId: number, targetLevel: number): boolean {
+  if (authStore.isAdmin) return true
+  if (!myDeptId.value) return false
+  const allowed = getAllowedLevels()
+  if (!allowed.includes(targetLevel)) return false
+  const scopeRootId = findScopeRootId(myDeptId.value)
+  if (!scopeRootId) return false
+  return isUnderRoot(scopeRootId, targetDeptId, allTreeData.value)
+}
+
+function isDescendant(parentId: number, targetId: number, nodes: Department[]): boolean {
+  for (const node of nodes) {
+    if (node.id === parentId) {
+      if (node.children) {
+        for (const child of node.children) {
+          if (child.id === targetId) return true
+          if (child.children && isDescendant(child.id!, targetId, child.children)) return true
+        }
+      }
+    } else if (node.children) {
+      if (isDescendant(parentId, targetId, node.children)) return true
+    }
+  }
+  return false
+}
 
 interface Department {
   id?: number
@@ -182,14 +297,14 @@ function getLevelTag(level: number) {
   return map[level] || 'info'
 }
 
-onMounted(loadTree)
+onMounted(() => { loadTree(); loadMyDept() })
 </script>
 
 <template>
   <div class="page-container">
     <!-- 顶部操作栏 -->
     <div class="toolbar">
-      <el-button type="primary" :icon="Plus" @click="handleAdd(0, 1)">新增部门</el-button>
+      <el-button type="primary" :icon="Plus" :disabled="!authStore.isAdmin && !myDeptId" @click="handleAdd(0, 1)">新增部门</el-button>
       <el-select v-model="searchLevel" placeholder="按层级筛选" clearable style="width: 140px; margin-left: 10px" @change="applyFilter">
         <el-option label="总部" :value="1" />
         <el-option label="一级部门" :value="2" />
@@ -225,9 +340,9 @@ onMounted(loadTree)
         <el-table-column prop="description" label="描述" width="184" align="center" show-overflow-tooltip />
         <el-table-column label="操作" width="276" align="center" fixed="right">
           <template #default="{ row }">
-            <el-button link class="action-btn add-btn" @click="handleAdd(row.id, row.deptLevel + 1)">添加子部门</el-button>
-            <el-button type="warning" link class="action-btn" @click="handleEdit(row)">编辑</el-button>
-            <el-button type="danger" link class="action-btn" @click="handleDelete(row)">删除</el-button>
+            <el-button link class="action-btn add-btn" :disabled="!isInScope(row.id || 0, row.deptLevel || 0)" @click="handleAdd(row.id, row.deptLevel + 1)">添加子部门</el-button>
+            <el-button type="warning" link class="action-btn" :disabled="!isInScope(row.id || 0, row.deptLevel || 0)" @click="handleEdit(row)">编辑</el-button>
+            <el-button type="danger" link class="action-btn" :disabled="!isInScope(row.id || 0, row.deptLevel || 0)" @click="handleDelete(row)">删除</el-button>
           </template>
         </el-table-column>
       </el-table>

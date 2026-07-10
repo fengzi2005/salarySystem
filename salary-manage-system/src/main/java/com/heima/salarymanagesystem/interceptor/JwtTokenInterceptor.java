@@ -59,14 +59,19 @@ public class JwtTokenInterceptor implements HandlerInterceptor {
         String roleCode = jwtUtils.getRoleCode(token);
         Long userId = jwtUtils.getUserId(token);
 
-        // 5. 验证 Redis 中 Token 是否有效（是否被主动登出）
-        String redisKey = TOKEN_PREFIX + token;
-        if (Boolean.FALSE.equals(redisTemplate.hasKey(redisKey))) {
-            return true; // Redis 中不存在，可能已过期或已登出
-        }
+        // 5. 先存入 ThreadLocal（即使 Redis 不可用也能识别角色）
+        UserHolder.set(userId, username, roleCode != null ? roleCode : "EMPLOYEE");
 
-        // 6. 将用户信息存入 ThreadLocal
-        UserHolder.set(userId, username, roleCode);
+        // 6. 尝试验证 Redis 中 Token 是否有效（是否被主动登出）
+        try {
+            String redisKey = TOKEN_PREFIX + token;
+            if (Boolean.FALSE.equals(redisTemplate.hasKey(redisKey))) {
+                // Redis 中不存在，清除已设置的用户信息
+                UserHolder.remove();
+            }
+        } catch (Exception e) {
+            // Redis 不可用时忽略，JWT 仍有效
+        }
 
         return true;
     }

@@ -1,5 +1,6 @@
 package com.heima.salarymanagesystem.controller;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.heima.salarymanagesystem.common.Result;
 import com.heima.salarymanagesystem.entity.Attendance;
 import com.heima.salarymanagesystem.service.AttendanceService;
@@ -60,6 +61,14 @@ public class AttendanceController {
      */
     @PostMapping
     public Result<Boolean> add(@RequestBody Attendance attendance) {
+        // 检查是否已有该月记录
+        Attendance exist = attendanceService.getOne(new LambdaQueryWrapper<Attendance>()
+            .eq(Attendance::getEmployeeId, attendance.getEmployeeId())
+            .eq(Attendance::getAttendanceYear, attendance.getAttendanceYear())
+            .eq(Attendance::getAttendanceMonth, attendance.getAttendanceMonth()));
+        if (exist != null) {
+            return Result.fail("该员工" + attendance.getAttendanceYear() + "年" + attendance.getAttendanceMonth() + "月已有考勤记录");
+        }
         return Result.ok(attendanceService.save(attendance));
     }
 

@@ -33,7 +33,7 @@ const editingId = ref<number | null>(null)
 const employeeOptions = ref<any[]>([])
 
 const form = reactive({
-  employeeId: null as number | null, attendanceYear: 2025, attendanceMonth: 6,
+  employeeId: null as number | null, attendanceDate: '2025-06',
   leaveDays: 0, lateTimes: 0, absentDays: 0
 })
 
@@ -60,15 +60,32 @@ async function loadEmployees() {
 
 function handleAdd() {
   dialogTitle.value = '录入考勤'; editingId.value = null
-  const [y, m] = endDate.value.split('-').map(Number)
-  Object.assign(form, { employeeId: null, attendanceYear: y, attendanceMonth: m, leaveDays: 0, lateTimes: 0, absentDays: 0 })
+  Object.assign(form, { employeeId: null, attendanceDate: endDate.value, leaveDays: 0, lateTimes: 0, absentDays: 0 })
   dialogVisible.value = true
+}
+
+// 监听员工和月份变化，检查是否已有记录
+async function checkExisting() {
+  if (!form.employeeId || !form.attendanceDate) return
+  if (editingId.value && dialogTitle.value.includes('编辑')) return // 已是编辑模式，不重复检查
+  const [y, m] = form.attendanceDate.split('-').map(Number)
+  // 从已有数据中查找同员工同月记录
+  const exist = tableData.value.find(
+    (r: any) => r.employee_id === form.employeeId && r.attendance_year === y && r.attendance_month === m
+  )
+  if (exist && !editingId.value) {
+    editingId.value = exist.id
+    dialogTitle.value = '编辑考勤（该月已有记录）'
+    form.leaveDays = exist.leave_days
+    form.lateTimes = exist.late_times
+    form.absentDays = exist.absent_days
+    ElMessage.warning('该员工已存在' + y + '年' + m + '月考勤，已切换为编辑模式')
+  }
 }
 function handleEdit(row: Attendance) {
   dialogTitle.value = '编辑考勤'; editingId.value = row.id!
   form.employeeId = row.employee_id
-  form.attendanceYear = row.attendance_year
-  form.attendanceMonth = row.attendance_month
+  form.attendanceDate = row.attendance_year + '-' + String(row.attendance_month).padStart(2, '0')
   form.leaveDays = row.leave_days
   form.lateTimes = row.late_times
   form.absentDays = row.absent_days
@@ -85,7 +102,15 @@ async function handleSubmit() {
   const valid = await formRef.value?.validate().catch(() => false)
   if (!valid) return
   try {
-    const data = { ...form }
+    const [y, m] = form.attendanceDate.split('-').map(Number)
+    const data = {
+      employeeId: form.employeeId,
+      attendanceYear: y,
+      attendanceMonth: m,
+      leaveDays: form.leaveDays,
+      lateTimes: form.lateTimes,
+      absentDays: form.absentDays
+    }
     if (editingId.value) {
       await request.put('/api/attendance', { ...data, id: editingId.value })
       ElMessage.success('更新成功（扣款/奖金已自动重算）')
@@ -184,22 +209,13 @@ onMounted(() => { loadData(); loadEmployees() })
     <el-dialog v-model="dialogVisible" :title="dialogTitle" width="440px" destroy-on-close>
       <el-form ref="formRef" :model="form" :rules="rules" label-width="90px">
         <el-form-item label="员工" prop="employeeId">
-          <el-select v-model="form.employeeId" placeholder="选择员工" filterable style="width: 100%">
+          <el-select v-model="form.employeeId" placeholder="选择员工" filterable style="width: 100%" @change="checkExisting">
             <el-option v-for="e in employeeOptions" :key="e.id" :label="`${e.emp_no} - ${e.name}`" :value="e.id" />
           </el-select>
         </el-form-item>
-        <el-row :gutter="16">
-          <el-col :span="12">
-            <el-form-item label="年份">
-              <el-input-number v-model="form.attendanceYear" :min="2020" :max="2099" style="width: 100%" controls-position="right" />
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
-            <el-form-item label="月份">
-              <el-input-number v-model="form.attendanceMonth" :min="1" :max="12" style="width: 100%" controls-position="right" />
-            </el-form-item>
-          </el-col>
-        </el-row>
+        <el-form-item label="考勤月份" prop="attendanceDate">
+          <el-date-picker v-model="form.attendanceDate" type="month" format="YYYY年M月" value-format="YYYY-MM" placeholder="选择月份" style="width: 100%" @change="checkExisting" />
+        </el-form-item>
         <el-form-item label="事假天数">
           <el-input-number v-model="form.leaveDays" :min="0" :max="31" style="width: 100%" />
         </el-form-item>

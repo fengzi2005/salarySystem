@@ -7,6 +7,7 @@ import com.heima.salarymanagesystem.service.MonthlySalaryService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -107,17 +108,39 @@ public class MonthlySalaryController {
 
     /**
      * 查询我的工资（当前登录用户）
+     * 按角色自动区分：
+     *   ADMIN → 全部员工工资
+     *   MANAGER → 本部门全员（含自己，自己的置顶）
+     *   EMPLOYEE → 仅自己
      * GET /api/salary/my?year=2025&month=6
      */
     @GetMapping("/my")
-    public Result<List<Map<String, Object>>> queryMySalary(
+    public Result<Map<String, Object>> queryMySalary(
             @RequestParam(required = false) Integer year,
             @RequestParam(required = false) Integer month) {
         Long currentEmployeeId = employeeMapper.selectEmployeeIdByUserId(UserHolder.getUserId());
         if (currentEmployeeId == null) {
             return Result.fail("未关联员工信息");
         }
-        return Result.ok(monthlySalaryService.queryEmployeeSalary(currentEmployeeId, year, month));
+
+        String roleCode = UserHolder.getRoleCode();
+        Map<String, Object> result = new HashMap<>();
+
+        if ("ADMIN".equals(roleCode)) {
+            // 管理员：查看全部
+            result.put("scope", "all");
+            result.put("records", monthlySalaryService.salaryQuery(year, month, null, null, null));
+        } else if ("MANAGER".equals(roleCode)) {
+            // 管理人员：仅看自己
+            result.put("scope", "self");
+            result.put("records", monthlySalaryService.queryEmployeeSalary(currentEmployeeId, year, month));
+        } else {
+            // 普通员工：仅自己
+            result.put("scope", "self");
+            result.put("records", monthlySalaryService.queryEmployeeSalary(currentEmployeeId, year, month));
+        }
+
+        return Result.ok(result);
     }
 
     /**
