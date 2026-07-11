@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted, nextTick } from 'vue'
+import { ElMessage } from 'element-plus'
 import { useAuthStore } from '@/stores/auth'
 import request from '@/utils/request'
 import * as echarts from 'echarts'
@@ -27,7 +28,8 @@ const myDetailItems = [
   { label: '其他减项', key: 'other_deductions', cls: 'card-deduct' },
 ]
 
-async function loadData() {
+async function loadData(warn = false) {
+  if (!searchMonth.value) { if (warn) ElMessage.warning('请选择年份和月份'); return }
   if (!authStore.employeeId) return
   loading.value = true
   try {
@@ -68,7 +70,7 @@ function renderPieChart(row: any) {
   })
 }
 
-onMounted(loadData)
+onMounted(() => loadData())
 </script>
 
 <template>
@@ -76,8 +78,8 @@ onMounted(loadData)
     <div class="toolbar">
       <span class="page-title">{{ scope === 'self' ? '我的薪资明细' : scope === 'department' ? '本部门薪资' : '全校薪资' }}</span>
       <div style="margin-left: auto; display: flex; align-items: center; gap: 8px">
-        <el-date-picker v-model="searchMonth" type="month" format="YYYY年M月" value-format="YYYY-MM" style="width: 160px" @change="loadData" />
-        <el-button type="primary" @click="loadData">查询</el-button>
+        <el-date-picker v-model="searchMonth" type="month" format="YYYY年M月" value-format="YYYY-MM" clearable style="width: 160px" @change="loadData()" @clear="tableData = []" />
+        <el-button type="primary" @click="loadData(true)">查询</el-button>
       </div>
     </div>
 

@@ -16,7 +16,7 @@ const mySalary = ref<any>(null)
 const myTrend = ref<any[]>([])
 
 const dispMonth = ref(`${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`)
-const queryYear = ref(2025)
+const queryYear = ref(authStore.isAdmin ? new Date().getFullYear() : 2025)
 
 async function loadReports() {
   loadingReport.value = true
@@ -32,8 +32,15 @@ async function loadReports() {
       statsData.value = s2.data.data || []
     } else {
       try {
+        let records: any[] = []
         const s3 = await request.get('/api/salary/my', { params: { year: y, month: m } })
-        const records = s3.data.data?.records || []
+        records = s3.data.data?.records || []
+        // 当月未计算则自动计算
+        if (records.length === 0 && authStore.employeeId) {
+          await request.post('/api/salary/calculate', null, { params: { year: y, month: m } })
+          const retry = await request.get('/api/salary/my', { params: { year: y, month: m } })
+          records = retry.data.data?.records || []
+        }
         if (records.length > 0) mySalary.value = records[0]
         const trendRes = await request.get('/api/salary/my', { params: { year: queryYear.value } })
         myTrend.value = (trendRes.data.data?.records || []).sort((a: any, b: any) => a.salary_month - b.salary_month)
@@ -53,7 +60,7 @@ function renderCharts() {
   const netData = new Array(12).fill(null); const grossData = new Array(12).fill(null)
   myTrend.value.forEach((m: any) => { const idx = (m.salary_month || 1) - 1; netData[idx] = Number(m.net_salary); grossData[idx] = Number(m.gross_salary) })
   chart.setOption({ grid: { left:40,right:20,top:10,bottom:20 }, tooltip:{trigger:'axis'}, xAxis:{type:'category',data:months,axisLabel:{fontSize:10}}, yAxis:{type:'value',axisLabel:{fontSize:10}}, series:[{type:'line',data:netData,smooth:true,lineStyle:{color:'#4a90d9',width:2},itemStyle:{color:'#2c5fa1'},areaStyle:{color:new echarts.graphic.LinearGradient(0,0,0,1,[{offset:0,color:'rgba(74,144,217,0.25)'},{offset:1,color:'rgba(74,144,217,0.02)'}])}}] })
-  if (chart2) chart2.setOption({ grid:{left:40,right:20,top:10,bottom:20}, tooltip:{trigger:'axis'}, xAxis:{type:'category',data:months,axisLabel:{fontSize:10}}, yAxis:{type:'value',axisLabel:{fontSize:10}}, series:[{type:'bar',data:grossData,name:'应发',color:'#409eff'},{type:'bar',data:netData,name:'实发',color:'#67c23a'}] })
+  if (chart2) chart2.setOption({ grid:{left:40,right:20,top:10,bottom:20}, tooltip:{trigger:'axis'}, xAxis:{type:'category',data:months,axisLabel:{fontSize:10}}, yAxis:{type:'value',axisLabel:{fontSize:10}}, series:[{type:'bar',data:grossData,name:'应发',color:'#5ba0f0'},{type:'bar',data:netData,name:'实发',color:'#73c74c'}] })
 }
 
 onMounted(() => { loadReports() })

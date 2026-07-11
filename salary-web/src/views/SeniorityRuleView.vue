@@ -84,7 +84,7 @@ async function handleSubmit() {
 }
 
 const scheduleDay = ref(10)
-const scheduleTime = ref('06:00:00')
+const scheduleTime = ref('00:00:00')
 const savedDay = ref(10)
 const savedTime = ref('06:00:00')
 const schedulerOn = ref(false)
@@ -102,6 +102,7 @@ async function loadSchedule() {
 }
 
 async function saveSchedule() {
+  if (!scheduleTime.value) { ElMessage.warning('请选择时间'); return }
   try {
     await request.post('/api/system/schedule', { day: scheduleDay.value, time: scheduleTime.value })
     savedDay.value = scheduleDay.value

@@ -66,7 +66,7 @@ const router = createRouter({
           path: 'my-salary',
           name: 'mySalary',
           component: () => import('@/views/MySalaryView.vue'),
-          meta: { title: '薪资明细', roles: ['ADMIN', 'MANAGER', 'EMPLOYEE'] }
+          meta: { title: '薪资明细', roles: ['MANAGER', 'EMPLOYEE'] }
         },
         {
           path: 'reports',

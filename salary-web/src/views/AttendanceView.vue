@@ -42,10 +42,21 @@ const rules = {
 }
 
 async function loadData() {
+  // 校验时间选择
+  if (!startDate.value && !endDate.value) {
+    ElMessage.warning('请至少选择开始月份')
+    return
+  }
+  if (!startDate.value && endDate.value) {
+    ElMessage.warning('请选择开始月份')
+    return
+  }
+  const sd = startDate.value!
+  const ed = endDate.value || `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`
   loading.value = true
   try {
-    const [sy, sm] = startDate.value.split('-').map(Number)
-    const [ey, em] = endDate.value.split('-').map(Number)
+    const [sy, sm] = sd.split('-').map(Number)
+    const [ey, em] = ed.split('-').map(Number)
     const res = await request.get('/api/attendance/month', {
       params: { startYear: sy, startMonth: sm, endYear: ey, endMonth: em }
     })
@@ -129,9 +140,9 @@ onMounted(() => { loadData(); loadEmployees() })
   <div class="page-container">
     <div class="toolbar">
       <el-button type="primary" :icon="Plus" @click="handleAdd">录入考勤</el-button>
-      <el-date-picker v-model="startDate" type="month" placeholder="开始月份" format="YYYY年M月" value-format="YYYY-MM" style="width: 150px; margin-left: 10px" />
+      <el-date-picker v-model="startDate" type="month" placeholder="开始月份" format="YYYY年M月" value-format="YYYY-MM" clearable style="width: 150px; margin-left: 10px" />
       <span style="margin: 0 8px; color: #909399">至</span>
-      <el-date-picker v-model="endDate" type="month" placeholder="结束月份" format="YYYY年M月" value-format="YYYY-MM" style="width: 150px" />
+      <el-date-picker v-model="endDate" type="month" placeholder="结束月份" format="YYYY年M月" value-format="YYYY-MM" clearable style="width: 150px" />
 
       <el-button type="primary" :icon="Search" @click="loadData">查询</el-button>
       <el-button :icon="Refresh" @click="loadData">刷新</el-button>

@@ -30,23 +30,10 @@ function getAllowedLevels(): number[] {
   return []
 }
 
-// 找到管辖根部门
-function findScopeRootId(deptId: number): number | null {
-  const dept = findDeptById(deptId, allTreeData.value)
-  if (!dept) return null
-  const p = authStore.positionName
-  // 分部经理：找二级祖先（一级部门）
-  if (p === '分部经理') {
-    if (dept.deptLevel === 3) return findAncestorByLevel(deptId, 2)
-    return deptId
-  }
-  // 部门经理：所在二级部门，或一级
-  if (p === '部门经理') {
-    if (dept.deptLevel === 3) return findAncestorByLevel(deptId, 2)
-    if (dept.deptLevel === 2) return deptId
-  }
-  // 总经理/副总经理：总部
-  return findAncestorByLevel(deptId, 1)
+// 管辖范围：自己所在部门及其子部门，但不能管比自己级别高的部门
+function findScopeRootId(): number | null {
+  if (!myDeptId.value) return null
+  return myDeptId.value
 }
 
 function findDeptById(id: number, nodes: Department[]): Department | null {
@@ -99,7 +86,7 @@ function isInScope(targetDeptId: number, targetLevel: number): boolean {
   if (!myDeptId.value) return false
   const allowed = getAllowedLevels()
   if (!allowed.includes(targetLevel)) return false
-  const scopeRootId = findScopeRootId(myDeptId.value)
+  const scopeRootId = findScopeRootId()
   if (!scopeRootId) return false
   return isUnderRoot(scopeRootId, targetDeptId, allTreeData.value)
 }
@@ -314,7 +301,7 @@ onMounted(() => { loadTree(); loadMyDept() })
     </div>
 
     <!-- 部门树形表格 -->
-    <el-card shadow="hover">
+    <el-card shadow="never" style="border: none;">
       <div style="flex: 1; overflow: auto;">
         <el-table
         :data="treeData"

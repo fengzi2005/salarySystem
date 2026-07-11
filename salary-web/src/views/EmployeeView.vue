@@ -102,7 +102,8 @@ const rules = {
   ]
 }
 
-async function loadData() {
+async function loadData(warn = false) {
+  if (!searchKeyword.value && warn) { ElMessage.warning('请输入姓名或编号'); return }
   loading.value = true
   try {
     if (searchKeyword.value) {
@@ -198,8 +199,8 @@ onMounted(() => { loadData(); loadOptions() })
   <div class="page-container">
     <div class="toolbar">
       <el-button type="primary" :icon="Plus" :disabled="!authStore.isAdmin && !mgmtLevelMap[authStore.positionName]" @click="handleAdd">新增员工</el-button>
-      <el-input v-model="searchKeyword" placeholder="搜索姓名/编号" prefix-icon="Search" clearable style="width: 200px; margin-left: 10px" @clear="loadData" @keyup.enter="loadData" />
-      <el-button type="primary" :icon="Search" @click="loadData" style="margin-left: 8px">搜索</el-button>
+      <el-input v-model="searchKeyword" placeholder="搜索姓名/编号" prefix-icon="Search" clearable style="width: 200px; margin-left: 10px" @clear="loadData()" @input="loadData()" />
+      <el-button type="primary" :icon="Search" @click="loadData(true)" style="margin-left: 8px">搜索</el-button>
       <el-button :icon="Refresh" @click="loadData">刷新</el-button>
     </div>
 

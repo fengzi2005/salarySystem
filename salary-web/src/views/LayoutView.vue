@@ -41,7 +41,7 @@ const menuItems = computed(() => {
     { path: '/salary', title: '工资管理', icon: Money, roles: ['ADMIN'] },
     { path: '/reports', title: '统计报表', icon: DataAnalysis, roles: ['ADMIN'] },
     { path: '/seniority-rule', title: '工龄工资规则', icon: Timer, roles: ['ADMIN'] },
-    { path: '/my-salary', title: '薪资明细', icon: Document, roles: ['ADMIN', 'MANAGER', 'EMPLOYEE'] }
+    { path: '/my-salary', title: '薪资明细', icon: Document, roles: ['MANAGER', 'EMPLOYEE'] }
   ]
   return allItems.filter(item => item.roles.includes(role))
 })

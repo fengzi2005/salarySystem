@@ -42,6 +42,11 @@ const detailDialog = ref(false)
 const manualForm = reactive({ projectBonus: 0, taxDeduction: 0, otherAdditions: 0, otherDeductions: 0 })
 
 async function loadData() {
+  if (!searchMonth.value) {
+    tableData.value = []
+    ElMessage.warning('请选择月份')
+    return
+  }
   loading.value = true
   try {
     const [y, m] = searchMonth.value.split('-').map(Number)
@@ -55,6 +60,7 @@ async function loadData() {
 }
 
 async function handleCalculate() {
+  if (!searchMonth.value) { tableData.value = []; ElMessage.warning('请选择月份'); return }
   try {
     const [y, m] = searchMonth.value.split('-').map(Number)
     await request.post('/api/salary/calculate', null, { params: { year: y, month: m } })
@@ -64,6 +70,7 @@ async function handleCalculate() {
 }
 
 async function handleConfirm() {
+  if (!searchMonth.value) { tableData.value = []; ElMessage.warning('请选择月份'); return }
   try {
     const [y, m] = searchMonth.value.split('-').map(Number)
     await request.post('/api/salary/confirm', null, { params: { year: y, month: m } })
@@ -101,7 +108,7 @@ onMounted(async () => {
   <div class="page-container">
     <!-- 操作工具栏 -->
     <div class="toolbar">
-      <el-date-picker v-model="searchMonth" type="month" placeholder="选择月份" format="YYYY年M月" value-format="YYYY-MM" style="width: 150px" @change="loadData" />
+      <el-date-picker v-model="searchMonth" type="month" placeholder="选择月份" format="YYYY年M月" value-format="YYYY-MM" clearable style="width: 150px" @change="loadData" @clear="tableData = []" />
       <el-select v-model="searchForm.deptId" placeholder="选择部门" clearable style="width: 150px; margin-left: 8px" @change="loadData" @clear="loadData">
         <el-option v-for="d in deptOptions" :key="d.id" :label="d.deptName" :value="d.id" />
       </el-select>
