@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>工资管理系统 - E-R 图</title>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    background: linear-gradient(180deg, #eef2f7 0%, #e8ecf1 100%);
+    font-family: 'Microsoft YaHei','PingFang SC',sans-serif;
+    padding: 32px 40px;
+    max-width: 1500px; margin:0 auto;
+  }
+
+  .header {
+    text-align:center;
+    margin-bottom: 36px;
+    padding: 24px;
+    background: #fff;
+    border-radius: 14px;
+    box-shadow: 0 2px 12px rgba(0,0,0,.05);
+  }
+  .header h1 { font-size:28px; color:#1a3a6c; letter-spacing:3px; margin-bottom:6px; }
+  .header .sub { color:#909399; font-size:14px; }
+
+  .legend {
+    display:flex; justify-content:center; gap:36px;
+    margin-bottom: 32px; padding:12px 24px;
+    background:#fff; border-radius:10px;
+    font-size:13px; color:#606266;
+    box-shadow: 0 1px 6px rgba(0,0,0,.04);
+  }
+  .legend span { display:flex; align-items:center; gap:8px; }
+  .legend .dot { width:12px; height:12px; border-radius:3px; }
+  .legend .pk { background:#ffd700; }
+  .legend .fk { background:#87ceeb; }
+  .legend .uk { background:#90ee90; }
+  .legend .line {
+    width:24px; height:2px; background:#666; border-radius:1px;
+  }
+  .legend .dash {
+    width:24px; height:0; border-top:2px dashed #666;
+  }
+
+  .section {
+    margin-bottom: 32px;
+    background:#fff;
+    border-radius:14px;
+    overflow:hidden;
+    box-shadow: 0 2px 12px rgba(0,0,0,.05);
+  }
+  .section-title {
+    font-size:17px; font-weight:700; color:#1a3a6c;
+    padding:14px 24px;
+    background: linear-gradient(90deg, #f0f4f9 0%, #fff 100%);
+    border-left: 5px solid #3b7dd8;
+    display:flex; align-items:center; gap:10px;
+  }
+  .section-title .num {
+    display:inline-flex; align-items:center; justify-content:center;
+    width:28px; height:28px; border-radius:50%;
+    background:#3b7dd8; color:#fff; font-size:14px; font-weight:600;
+  }
+  .diagram-box {
+    padding: 20px 24px 28px;
+  }
+  .diagram-box .mermaid {
+    display:flex; justify-content:center;
+    min-height: 60px;
+  }
+  .overview-box {
+    padding: 20px 24px 28px;
+  }
+  .overview-box .mermaid {
+    display:flex; justify-content:center;
+  }
+
+  .overview-box {
+    padding: 20px 24px 28px;
+    overflow-x: auto;
+    border-top: 1px solid #eef1f5;
+  }
+  .overview-box .mermaid {
+    display:flex; justify-content:center;
+  }
+
+  .footer {
+    text-align:center; color:#b0b3bb; font-size:12px;
+    margin-top:40px; padding:16px;
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>📊 工资管理系统 · 实体关系图</h1>
+  <div class="sub">共 15 张数据表 · 浏览器直接查看 · Ctrl+P 可打印为 PDF</div>
+</div>
+
+<div class="legend">
+  <span><span class="dot pk"></span> 主键 PK</span>
+  <span><span class="dot fk"></span> 外键 FK</span>
+  <span><span class="dot uk"></span> 唯一键 UK</span>
+  <span><span class="line"></span> 一对多</span>
+  <span><span class="dash"></span> 一对一</span>
+</div>
+
+<!-- ====== 一、组织架构 ====== -->
+<div class="section">
+  <div class="section-title"><span class="num">1</span> 组织架构</div>
+  <div class="diagram-box"><div class="mermaid">
+erDiagram
+    DEPARTMENT ||--o{ DEPARTMENT : "上级部门"
+    DEPARTMENT ||--o{ EMPLOYEE : "所属部门"
+    POSITION ||--o{ EMPLOYEE : "担任岗位"
+    TITLE ||--o{ EMPLOYEE : "拥有职称"
+
+    DEPARTMENT {
+        bigint id PK "部门ID"
+        varchar dept_name "部门名称"
+        bigint parent_id FK "上级部门(自关联)"
+        tinyint dept_level "1总部 2一级部门 3分部"
+        bigint manager_id FK "部门负责人"
+        int sort_order "排序号"
+    }
+
+    POSITION {
+        bigint id PK "岗位ID"
+        varchar position_name "岗位名称"
+        varchar position_type "MANAGEMENT 管理岗 / TECHNICAL 技术岗"
+        decimal position_salary "岗位工资(统一标准)"
+    }
+
+    TITLE {
+        bigint id PK "职称ID"
+        varchar title_name "职称名称"
+        decimal title_salary "职级工资(统一标准)"
+    }
+
+    EMPLOYEE {
+        bigint id PK "员工ID"
+        varchar emp_no UK "工号 FS开头+7位数字"
+        varchar name "姓名"
+        tinyint gender "1男 2女"
+        bigint department_id FK "所属部门"
+        bigint position_id FK "岗位"
+        bigint title_id FK "职称"
+        date entry_date "入职日期(工龄计算依据)"
+        decimal base_salary "基本工资(个人独立)"
+        varchar phone "联系电话"
+        varchar email "邮箱"
+        tinyint status "1在职 0离职"
+    }
+  </div></div>
+</div>
+
+<!-- ====== 二、权限管理 ====== -->
+<div class="section">
+  <div class="section-title"><span class="num">2</span> 权限管理</div>
+  <div class="diagram-box"><div class="mermaid">
+erDiagram
+    SYS_ROLE ||--o{ SYS_USER_ROLE : ""
+    SYS_USER ||--o{ SYS_USER_ROLE : ""
+    SYS_USER ||--o| EMPLOYEE : "关联员工身份"
+
+    SYS_ROLE {
+        bigint id PK "角色ID"
+        varchar role_code UK "ADMIN 管理员"
+        varchar role_name "MANAGER 管理人员"
+        varchar description "EMPLOYEE 普通员工"
+    }
+
+    SYS_USER {
+        bigint id PK "用户ID"
+        varchar username UK "登录名(姓名拼音)"
+        varchar password "密码"
+        bigint employee_id FK "关联员工"
+        tinyint status "1启用 0禁用"
+    }
+
+    SYS_USER_ROLE {
+        bigint id PK
+        bigint user_id FK "用户ID"
+        bigint role_id FK "角色ID"
+    }
+  </div></div>
+</div>
+
+<!-- ====== 三、薪资管理 ====== -->
+<div class="section">
+  <div class="section-title"><span class="num">3</span> 薪资管理（核心业务）</div>
+  <div class="diagram-box"><div class="mermaid">
+erDiagram
+    EMPLOYEE ||--o{ MONTHLY_SALARY : "每月一条工资"
+    EMPLOYEE ||--o{ ATTENDANCE : "每月一条考勤"
+    EMPLOYEE ||--o{ SENIORITY_PAY_RECORD : "每月一条工龄"
+    MONTHLY_SALARY ||--o{ MONTHLY_SALARY_DETAIL : "明细拆分"
+    SENIORITY_PAY_RULE ||--o{ SENIORITY_PAY_RECORD : "计算规则"
+
+    ATTENDANCE {
+        bigint id PK "考勤ID"
+        bigint employee_id FK "员工"
+        int attendance_year "年份"
+        int attendance_month "月份"
+        int leave_days "事假天数"
+        int late_times "迟到次数"
+        int absent_days "旷工天数"
+        tinyint is_full_attendance "是否全勤"
+        decimal leave_deduction "事假扣款 100元/天"
+        decimal late_deduction "迟到扣款 50元/次"
+        decimal absent_deduction "旷工扣款 300元/天"
+        decimal full_attendance_bonus "全勤奖金 300元/月"
+    }
+
+    MONTHLY_SALARY {
+        bigint id PK "工资ID"
+        bigint employee_id FK "员工"
+        int salary_year "年份"
+        int salary_month "月份"
+        decimal base_salary "①基本工资"
+        decimal position_salary "②岗位工资"
+        decimal title_salary "③职级工资"
+        decimal seniority_pay "④工龄工资"
+        decimal full_attendance_bonus "⑤全勤奖金"
+        decimal leave_deduction "⑥事假扣款"
+        decimal late_deduction "⑦迟到扣款"
+        decimal absent_deduction "⑧旷工扣款"
+        decimal project_bonus "⑨项目奖金(手动)"
+        decimal tax_deduction "⑩个税扣除(手动)"
+        decimal other_additions "⑪其他加项(手动)"
+        decimal other_deductions "⑫其他减项(手动)"
+        decimal gross_salary "应发=①→⑤+⑨+⑪"
+        decimal total_deduction "扣款=⑥→⑧+⑩+⑫"
+        decimal net_salary "实发=应发-扣款"
+        varchar status "DRAFT草稿 CONFIRMED已确认"
+    }
+
+    MONTHLY_SALARY_DETAIL {
+        bigint id PK "明细ID"
+        bigint monthly_salary_id FK "工资主表"
+        varchar item_name "工资项名称"
+        varchar item_code "编码"
+        decimal item_amount "金额"
+        int sort_order "排序"
+    }
+
+    SENIORITY_PAY_RULE {
+        bigint id PK "规则ID"
+        varchar rule_name "规则名称"
+        varchar rule_type "OLD旧规则 NEW新规则"
+        decimal first_year_amount "第一年金额"
+        decimal increment_per_year "每年递增额"
+        date effective_date "生效日期"
+        date expire_date "失效日期"
+        tinyint is_active "当前启用"
+    }
+
+    SENIORITY_PAY_RECORD {
+        bigint id PK "记录ID"
+        bigint employee_id FK "员工"
+        int salary_year "年份"
+        int salary_month "月份"
+        int seniority_years "工龄年数"
+        decimal seniority_amount "工龄工资金额"
+        bigint rule_id FK "使用规则ID"
+    }
+  </div></div>
+</div>
+
+<!-- ====== 四、配置与日志 ====== -->
+<div class="section">
+  <div class="section-title"><span class="num">4</span> 配置与日志</div>
+  <div class="diagram-box"><div class="mermaid">
+erDiagram
+    EMPLOYEE ||--o{ EMPLOYEE_CHANGE_LOG : "变更历史"
+
+    SALARY_ITEM_CONFIG {
+        bigint id PK "配置ID"
+        varchar item_name "工资项名称"
+        varchar item_code UK "系统编码"
+        varchar item_type "SYSTEM系统自动 MANUAL手动"
+        tinyint is_active "启停开关"
+        int sort_order "排序号"
+    }
+
+    EMPLOYEE_CHANGE_LOG {
+        bigint id PK "日志ID"
+        bigint employee_id FK "员工"
+        varchar change_type "POSITION岗位 TITLE职称"
+        bigint old_value_id "变更前ID"
+        bigint new_value_id "变更后ID"
+        varchar old_value_name "变更前名称"
+        varchar new_value_name "变更后名称"
+        date change_date "操作日期"
+        date effective_date "薪资格式生效日"
+    }
+
+    SCHEDULE_JOB_LOG {
+        bigint id PK "日志ID"
+        varchar job_name "任务名称"
+        datetime execute_time "执行时间"
+        varchar status "SUCCESS成功 FAIL失败"
+        text message "执行详情"
+    }
+  </div></div>
+</div>
+
+<!-- ====== 五、全局总览 ====== -->
+<div class="section">
+  <div class="section-title"><span class="num">5</span> 全局关系总览</div>
+  <div class="diagram-box"><div class="mermaid">
+graph TB
+    subgraph 权限子系统
+        ROLE["📋 sys_role<br/>角色表"]
+        UR["sys_user_role<br/>关联表"]
+        USER["👤 sys_user<br/>用户表"]
+        ROLE --- UR --- USER
+    end
+
+    subgraph 组织子系统
+        DEPT["🏢 department<br/>部门表(树形)"]
+        POS["💼 position<br/>岗位表"]
+        TTL["🎓 title<br/>职称表"]
+        EMP["🧑 employee<br/>员工表"]
+        DEPT --- EMP
+        POS --- EMP
+        TTL --- EMP
+        DEPT -->|parent_id| DEPT
+    end
+
+    subgraph 薪资子系统
+        MS["💰 monthly_salary<br/>月度工资主表"]
+        ATT["📅 attendance<br/>考勤表"]
+        SPR["📈 seniority_pay_rule<br/>工龄规则表"]
+        SP["📊 seniority_pay_record<br/>工龄记录表"]
+        MSD["📄 monthly_salary_detail<br/>工资明细表"]
+        MS --- MSD
+        SPR --- SP
+    end
+
+    subgraph 辅助子系统
+        SIC["⚙️ salary_item_config<br/>工资项配置"]
+        LOG["📝 employee_change_log<br/>员工变更日志"]
+        SJL["📜 schedule_job_log<br/>定时任务日志"]
+    end
+
+    USER -->|关联| EMP
+    EMP --> ATT
+    EMP --> MS
+    EMP --> SP
+    EMP --> LOG
+
+    style ROLE fill:#ffe0b2,stroke:#ff9800
+    style USER fill:#ffe0b2,stroke:#ff9800
+    style UR fill:#fff3e0,stroke:#ff9800
+    style DEPT fill:#b3d4ff,stroke:#2196f3
+    style POS fill:#b3d4ff,stroke:#2196f3
+    style TTL fill:#b3d4ff,stroke:#2196f3
+    style EMP fill:#c8e6c9,stroke:#4caf50
+    style MS fill:#ffccbc,stroke:#ff5722
+    style ATT fill:#ffccbc,stroke:#ff5722
+    style SP fill:#ffccbc,stroke:#ff5722
+    style SPR fill:#e1bee7,stroke:#9c27b0
+    style MSD fill:#ffe0b2,stroke:#ff9800
+    style SIC fill:#f5f5f5,stroke:#9e9e9e
+    style LOG fill:#f5f5f5,stroke:#9e9e9e
+    style SJL fill:#f5f5f5,stroke:#9e9e9e
+  </div></div>
+</div>
+
+<div class="footer">工资管理系统 v1.0 · Spring Boot 3.4.1 + Vue 3 + MySQL · 共 15 个实体</div>
+
+<script>
+mermaid.initialize({
+  startOnLoad:true,
+  theme:'default',
+  er:{ diagramPadding:60, entityPadding:14, fontSize:15 },
+  flowchart:{ htmlLabels:true, padding:24, useMaxWidth:true, nodeSpacing:60, rankSpacing:80 }
+});
+</script>
+</body>
+</html>

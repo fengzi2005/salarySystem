@@ -4,6 +4,7 @@ d:\salarySystem\salary-manage-system\src\main\java\com\heima\salarymanagesystem\
 d:\salarySystem\salary-manage-system\src\main\java\com\heima\salarymanagesystem\config\MetaObjectHandlerConfig.java
 d:\salarySystem\salary-manage-system\src\main\java\com\heima\salarymanagesystem\config\MyBatisPlusConfig.java
 d:\salarySystem\salary-manage-system\src\main\java\com\heima\salarymanagesystem\config\RedisConfig.java
+d:\salarySystem\salary-manage-system\src\main\java\com\heima\salarymanagesystem\config\StartupWarmer.java
 d:\salarySystem\salary-manage-system\src\main\java\com\heima\salarymanagesystem\config\WebConfig.java
 d:\salarySystem\salary-manage-system\src\main\java\com\heima\salarymanagesystem\controller\AttendanceController.java
 d:\salarySystem\salary-manage-system\src\main\java\com\heima\salarymanagesystem\controller\AuthController.java
