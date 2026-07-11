@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>工资管理系统 - 数据流图</title>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:#eef1f5; font-family:'Microsoft YaHei',sans-serif; padding:24px; max-width:1400px; margin:0 auto; }
+  h1 { text-align:center; color:#1a3a6c; margin-bottom:8px; font-size:26px; }
+  .sub { text-align:center; color:#909399; font-size:13px; margin-bottom:28px; }
+  .section { background:#fff; border-radius:14px; box-shadow:0 2px 12px rgba(0,0,0,.05); margin-bottom:28px; overflow:hidden; }
+  .section-title { font-size:17px; font-weight:700; color:#1a3a6c; padding:14px 24px; background:linear-gradient(90deg,#f0f4f9 0%,#fff 100%); border-left:5px solid #3b7dd8; }
+  .diagram-box { padding:20px 24px; display:flex; justify-content:center; }
+</style>
+</head>
+<body>
+
+<h1>工资管理系统 · 数据流图（DFD）</h1>
+<p class="sub">含顶层图（上下文图）和 0 层图</p>
+
+<!-- 顶层图 -->
+<div class="section">
+  <div class="section-title">顶层图（上下文图）</div>
+  <div class="diagram-box"><div class="mermaid">
+graph TB
+    subgraph 外部实体
+        ADMIN["🛡️ 系统管理员<br/>维护基础数据<br/>计算工资、确认归档"]
+        MANAGER["👔 部门经理<br/>查看本部门工资<br/>管理部门信息"]
+        EMPLOYEE["🧑 普通员工<br/>查看个人工资"]
+        CLOCK["⏰ 系统时钟<br/>每月定时触发"]
+    end
+
+    SYS["<b>工资管理系统</b><br/>P0"]
+
+    ADMIN -->|"部门/岗位/职称/员工数据"| SYS
+    MANAGER -->|"查询请求"| SYS
+    EMPLOYEE -->|"查询个人薪资"| SYS
+    CLOCK -->|"定时信号"| SYS
+
+    SYS -->|"工资报表、统计图表"| ADMIN
+    SYS -->|"部门薪资数据"| MANAGER
+    SYS -->|"个人工资明细"| EMPLOYEE
+    SYS -->|"计算日志"| CLOCK
+
+    style ADMIN fill:#ffe0b2,stroke:#ff9800
+    style MANAGER fill:#c8e6c9,stroke:#4caf50
+    style EMPLOYEE fill:#b3d4ff,stroke:#2196f3
+    style CLOCK fill:#e1bee7,stroke:#9c27b0
+    style SYS fill:#ffccbc,stroke:#ff5722,stroke-width:3px
+  </div></div>
+</div>
+
+<!-- 0层图 -->
+<div class="section">
+  <div class="section-title">0 层图（子系统级）</div>
+  <div class="diagram-box"><div class="mermaid">
+graph TB
+    subgraph 外部
+        ADMIN["🛡️ 系统管理员"]
+        MGR["👔 部门经理"]
+        EMP["🧑 普通员工"]
+        CLK["⏰ 系统时钟"]
+    end
+
+    subgraph 工资管理系统
+        P1["P1<br/>基础数据管理"]
+        P2["P2<br/>考勤管理"]
+        P3["P3<br/>工资计算"]
+        P4["P4<br/>报表查询"]
+        P5["P5<br/>权限认证"]
+    end
+
+    subgraph 数据存储
+        DS1[("DS1<br/>sys_user<br/>用户表")]
+        DS2[("DS2<br/>employee<br/>员工表")]
+        DS3[("DS3<br/>department<br/>部门表")]
+        DS4[("DS4<br/>attendance<br/>考勤表")]
+        DS5[("DS5<br/>monthly_salary<br/>月度工资表")]
+        DS6[("DS6<br/>seniority_pay_rule<br/>工龄规则表")]
+        DS7[("DS7<br/>salary_item_config<br/>工资项配置")]
+    end
+
+    ADMIN --> P1
+    ADMIN --> P2
+    ADMIN --> P3
+    ADMIN --> P4
+    CLK --> P3
+
+    P1 -->|"部门/岗位/职称CRUD"| DS3
+    P1 -->|"员工CRUD"| DS2
+    P1 -->|"工资项启停"| DS7
+    P1 -->|"工龄规则维护"| DS6
+
+    P2 -->|"录入考勤"| DS4
+    P2 -->|"触发器自动扣款"| DS4
+
+    P3 -->|"读取员工+考勤+规则"| DS2
+    P3 -->|"读取考勤扣款"| DS4
+    P3 -->|"读取工龄规则"| DS6
+    P3 -->|"读取配置启停"| DS7
+    P3 -->|"写入计算结果"| DS5
+
+    P4 -->|"按部门/员工/月份查询"| DS5
+    P4 -->|"统计汇总"| DS5
+
+    P5 -->|"验证身份"| DS1
+    P5 -->|"关联员工"| DS2
+
+    MGR --> P4
+    EMP --> P4
+    P4 --> MGR
+    P4 --> EMP
+
+    style P1 fill:#ffe0b2,stroke:#ff9800
+    style P2 fill:#c8e6c9,stroke:#4caf50
+    style P3 fill:#ffccbc,stroke:#ff5722,stroke-width:3px
+    style P4 fill:#b3d4ff,stroke:#2196f3
+    style P5 fill:#e1bee7,stroke:#9c27b0
+</div></div>
+</div>
+
+<!-- P3 展开 -->
+<div class="section">
+  <div class="section-title">P3 工资计算 - 展开图</div>
+  <div class="diagram-box"><div class="mermaid">
+graph TB
+    START["开始<br/>输入: 年份, 月份"] --> LOOP["游标遍历<br/>在职员工"]
+
+    LOOP --> READ_EMP["读取员工数据<br/>base_salary<br/>position_salary<br/>title_salary<br/>entry_date"]
+
+    READ_EMP --> CALC_SENIORITY["计算工龄工资<br/>TIMESTAMPDIFF(entry_date)<br/>读取活跃规则<br/>新旧公式计算"]
+
+    CALC_SENIORITY --> READ_ATT["读取考勤数据<br/>事假扣款/迟到扣款<br/>旷工扣款/全勤奖金<br/>(触发器已算好)"]
+
+    READ_ATT --> READ_CFG["读取工资项配置<br/>12项 is_active<br/>停用项置零"]
+
+    READ_CFG --> READ_MANUAL["读取手动录入项<br/>项目奖金/个税<br/>(仅DRAFT状态)"]
+
+    READ_MANUAL --> CALC["汇总计算<br/>gross = Σ收入项<br/>deduction = Σ扣款项<br/>net = gross - deduction"]
+
+    CALC --> CHECK{"已确认?"}
+    CHECK -->|"是(CONFIRMED)"| SKIP["跳过"]
+    CHECK -->|"否(DRAFT)"| SAVE["INSERT ...<br/>ON DUPLICATE KEY<br/>UPDATE"]
+
+    SKIP --> LOOP
+    SAVE --> LOOP
+
+    LOOP -->|"遍历完成"| LOG["记录执行日志<br/>schedule_job_log"]
+    LOG --> END["结束"]
+
+    style START fill:#c8e6c9,stroke:#4caf50
+    style END fill:#c8e6c9,stroke:#4caf50
+    style CALC fill:#ffccbc,stroke:#ff5722
+    style CHECK fill:#ffe0b2,stroke:#ff9800
+    style SAVE fill:#b3d4ff,stroke:#2196f3
+    style SKIP fill:#f5f5f5,stroke:#9e9e9e
+</div></div>
+</div>
+
+<!-- P2 展开 -->
+<div class="section">
+  <div class="section-title">P2 考勤管理 - 触发器流程</div>
+  <div class="diagram-box"><div class="mermaid">
+graph LR
+    INPUT["管理员录入<br/>考勤数据<br/>{员工,年,月,<br/>事假天数,迟到次数,<br/>旷工天数}"] --> TRG["BEFORE INSERT<br/>或 BEFORE UPDATE<br/>触发器触发"]
+
+    TRG --> CALC1["计算事假扣款<br/>= leave_days × 100"]
+    TRG --> CALC2["计算迟到扣款<br/>= late_times × 50"]
+    TRG --> CALC3["计算旷工扣款<br/>= absent_days × 300"]
+    TRG --> CALC4["判断全勤<br/>无缺勤 → 全勤奖300<br/>有缺勤 → 0"]
+
+    CALC1 --> SAVE2["写入 attendance 表"]
+    CALC2 --> SAVE2
+    CALC3 --> SAVE2
+    CALC4 --> SAVE2
+
+    style TRG fill:#ffccbc,stroke:#ff5722
+    style INPUT fill:#c8e6c9,stroke:#4caf50
+    style SAVE2 fill:#b3d4ff,stroke:#2196f3
+</div></div>
+</div>
+
+<p style="text-align:center;color:#909399;font-size:12px;margin-top:24px;">工资管理系统 · 数据流图 · 可直接打印或导出PDF</p>
+
+<script>
+mermaid.initialize({ startOnLoad:true, theme:'default', flowchart:{ useMaxWidth:true, htmlLabels:true, padding:20, nodeSpacing:40, rankSpacing:50 }});
+</script>
+</body>
+</html>
